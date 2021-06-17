@@ -289,9 +289,9 @@ class CommonLossCompute(LossComputeBase):
         gtruth = target.view(-1)
 
         # TODO remove the print lines below
-        print('scores shape: {}'.format(scores.shape))
-        print('gtruth shape: {}'.format(gtruth.shape))
-        print('gtruth[0:5]: {}'.format(gtruth[0:5]))
+        # print('scores shape: {}'.format(scores.shape))
+        # print('gtruth shape: {}'.format(gtruth.shape))
+        # print('gtruth[0:5]: {}'.format(gtruth[0:5]))
 
         loss = self.criterion(scores, gtruth)
         if self.lambda_coverage != 0.0:

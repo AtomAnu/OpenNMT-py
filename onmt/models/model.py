@@ -69,9 +69,9 @@ class NMTModel(BaseModel):
                                       with_align=with_align)
 
         # TODO remove the print lines below
-        print('tgt shape: {}'.format(dec_in.shape))
-        print('dec_out shape: {}'.format(dec_out.shape))
-        print('tgt[0:5]: {}'.format(dec_in[0:5]))
+        # print('tgt shape: {}'.format(dec_in.shape))
+        # print('dec_out shape: {}'.format(dec_out.shape))
+        # print('tgt[0:5]: {}'.format(dec_in[0:5]))
 
         return dec_out, attns
 
