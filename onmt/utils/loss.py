@@ -288,6 +288,11 @@ class CommonLossCompute(LossComputeBase):
         scores = self.generator(bottled_output)
         gtruth = target.view(-1)
 
+        # TODO remove the print lines below
+        print('scores shape: {}'.format(scores.shape))
+        print('gtruth shape: {}'.format(gtruth.shape))
+        print('gtruth[0:5]: {}'.format(gtruth[0:5]))
+
         loss = self.criterion(scores, gtruth)
         if self.lambda_coverage != 0.0:
             coverage_loss = self._compute_coverage_loss(

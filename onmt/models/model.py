@@ -67,6 +67,12 @@ class NMTModel(BaseModel):
         dec_out, attns = self.decoder(dec_in, memory_bank,
                                       memory_lengths=lengths,
                                       with_align=with_align)
+
+        # TODO remove the print lines below
+        print('tgt shape: {}'.format(dec_in.shape))
+        print('dec_out shape: {}'.format(dec_out.shape))
+        print('tgt[0:5]: {}'.format(dec_in[0:5]))
+
         return dec_out, attns
 
     def update_dropout(self, dropout):
@@ -94,6 +100,59 @@ class NMTModel(BaseModel):
             log('* number of parameters: {}'.format(enc + dec))
         return enc, dec
 
+class ACNMTModel(BaseModel):
+    """
+    Core trainable object in OpenNMT. Implements a trainable interface
+    for a simple, generic encoder + decoder model.
+    Args:
+      encoder (onmt.encoders.EncoderBase): an encoder object
+      decoder (onmt.decoders.DecoderBase): a decoder object
+    """
+
+    def __init__(self, actor_encoder, actor_decoder, critic_encoder, critic_decoder):
+        super(ACNMTModel, self).__init__(actor_encoder, actor_decoder, critic_encoder, critic_decoder)
+        self.encoder = actor_encoder
+        self.decoder = actor_decoder
+
+    def forward(self, src, tgt, lengths, bptt=False, with_align=False):
+        dec_in = tgt[:-1]  # exclude last target from inputs
+
+        enc_state, memory_bank, lengths = self.encoder(src, lengths)
+
+        if not bptt:
+            self.decoder.init_state(src, memory_bank, enc_state)
+        dec_out, attns = self.decoder(dec_in, memory_bank,
+                                      memory_lengths=lengths,
+                                      with_align=with_align)
+        return dec_out, attns
+
+    def sample(self):
+        pass
+
+    def update_dropout(self, dropout):
+        self.encoder.update_dropout(dropout)
+        self.decoder.update_dropout(dropout)
+
+    def count_parameters(self, log=print):
+        """Count number of parameters in model (& print with `log` callback).
+
+        Returns:
+            (int, int):
+            * encoder side parameter count
+            * decoder side parameter count
+        """
+
+        enc, dec = 0, 0
+        for name, param in self.named_parameters():
+            if 'encoder' in name:
+                enc += param.nelement()
+            else:
+                dec += param.nelement()
+        if callable(log):
+            log('encoder: {}'.format(enc))
+            log('decoder: {}'.format(dec))
+            log('* number of parameters: {}'.format(enc + dec))
+        return enc, dec
 
 class LanguageModel(BaseModel):
     """
