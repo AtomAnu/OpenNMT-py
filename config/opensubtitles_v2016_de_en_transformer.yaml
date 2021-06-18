@@ -41,7 +41,7 @@ world_size: 1
 gpu_ranks: [0]
 batch_type: "tokens"
 batch_size: 2000
-valid_batch_size: 16
+valid_batch_size: 2000
 batch_size_multiple: 1
 max_generator_batches: 0
 accum_count: [3]
