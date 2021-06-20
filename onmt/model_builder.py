@@ -150,6 +150,7 @@ def build_task_specific_model(model_opt, fields):
     print('Fields[tgt]: {}'.format(fields["tgt"]))
 
     for _, f in fields["tgt"]:
+        print(f.init_token)
         print(f.vocab.stoi[f.init_token])
     # print('Fields[tgt].vocab: {}'.format(fields["tgt"].vocab))
     # print('Fields[tgt].vocab.get_stoi: {}'.format(fields["tgt"].vocab.get_stoi()))
