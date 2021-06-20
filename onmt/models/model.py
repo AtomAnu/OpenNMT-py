@@ -113,6 +113,8 @@ class ACNMTModel(BaseModel):
         super(ACNMTModel, self).__init__(actor_encoder, actor_decoder, critic_encoder, critic_decoder)
         self.encoder = actor_encoder
         self.decoder = actor_decoder
+        self.critic_encoder = critic_encoder
+        self.critic_decoder = critic_decoder
 
     def forward(self, src, tgt, lengths, bptt=False, with_align=False):
         dec_in = tgt[:-1]  # exclude last target from inputs

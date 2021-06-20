@@ -116,11 +116,17 @@ def build_src_emb(model_opt, fields):
     return src_emb
 
 
-def build_encoder_with_embeddings(model_opt, fields):
+def build_encoder_with_embeddings(model_opt, fields, for_critic=False):
     # Build encoder.
-    src_emb = build_src_emb(model_opt, fields)
-    encoder = build_encoder(model_opt, src_emb)
-    return encoder, src_emb
+    if for_critic:
+        tgt_field = fields["tgt"]
+        tgt_emb = build_embeddings(model_opt, tgt_field, for_encoder=False)
+        encoder = build_encoder(model_opt, tgt_emb)
+        return encoder, tgt_emb
+    else:
+        src_emb = build_src_emb(model_opt, fields)
+        encoder = build_encoder(model_opt, src_emb)
+        return encoder, src_emb
 
 
 def build_decoder_with_embeddings(
@@ -139,6 +145,10 @@ def build_decoder_with_embeddings(
 
 
 def build_task_specific_model(model_opt, fields):
+    # TODO to be removed
+    print('Fields: {}'.format(fields))
+    print('Fields[tgt]: {}'.format(fields["tgt"]))
+    print('Fields[tgt].base_field.vocab: {}'.format(fields["tgt"].base_field.vocab))
     # Share the embedding matrix - preprocess with share_vocab required.
     if model_opt.share_embeddings:
         # src/tgt vocab should be the same if `-share_vocab` is specified.
@@ -161,6 +171,24 @@ def build_task_specific_model(model_opt, fields):
             model_opt, fields, share_embeddings=True, src_emb=src_emb
         )
         return onmt.models.LanguageModel(decoder=decoder)
+    elif model_opt.model_task == ModelTask.AC:
+        # TODO configure the AC NMT model
+        actor_encoder, src_emb = build_encoder_with_embeddings(model_opt, fields)
+        actor_decoder, _ = build_decoder_with_embeddings(
+            model_opt,
+            fields,
+            share_embeddings=model_opt.share_embeddings,
+            src_emb=src_emb,
+        )
+        critic_encoder, tgt_emb = build_encoder_with_embeddings(model_opt, fields, for_critic=True)
+        critic_decoder, _ = build_decoder_with_embeddings(
+            model_opt,
+            fields,
+            share_embeddings=model_opt.share_embeddings,
+            src_emb=tgt_emb,
+        )
+        return onmt.models.ACNMTModel(actor_encoder=actor_encoder, actor_decoder=actor_decoder,
+                                      critic_encoder=critic_encoder, critic_decoder=critic_decoder)
     else:
         raise ValueError(f"No model defined for {model_opt.model_task} task")
 
