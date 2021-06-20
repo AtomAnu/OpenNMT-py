@@ -148,8 +148,8 @@ def build_task_specific_model(model_opt, fields):
     # TODO to be removed
     print('Fields: {}'.format(fields))
     print('Fields[tgt]: {}'.format(fields["tgt"]))
-    print('Fields[tgt].base_field.vocab: {}'.format(fields["tgt"].base_field.vocab))
-    print('Fields[tgt].base_field.vocab.get_stoi: {}'.format(fields["tgt"].base_field.vocab.get_stoi()))
+    print('Fields[tgt].vocab: {}'.format(fields["tgt"].vocab))
+    print('Fields[tgt].vocab.get_stoi: {}'.format(fields["tgt"].vocab.get_stoi()))
     # Share the embedding matrix - preprocess with share_vocab required.
     if model_opt.share_embeddings:
         # src/tgt vocab should be the same if `-share_vocab` is specified.
