@@ -152,8 +152,6 @@ def build_task_specific_model(model_opt, fields):
     for _, f in fields["tgt"]:
         print(f.init_token)
         print(f.vocab.stoi[f.init_token])
-    # print('Fields[tgt].vocab: {}'.format(fields["tgt"].vocab))
-    # print('Fields[tgt].vocab.get_stoi: {}'.format(fields["tgt"].vocab.get_stoi()))
 
     # Share the embedding matrix - preprocess with share_vocab required.
     if model_opt.share_embeddings:
@@ -178,6 +176,7 @@ def build_task_specific_model(model_opt, fields):
         )
         return onmt.models.LanguageModel(decoder=decoder)
     elif model_opt.model_task == ModelTask.AC:
+        logger.info('Building the AC NMT model...')
         # TODO configure the AC NMT model
         actor_encoder, src_emb = build_encoder_with_embeddings(model_opt, fields)
         actor_decoder, _ = build_decoder_with_embeddings(
