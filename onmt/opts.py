@@ -251,7 +251,7 @@ def model_opts(parser):
         "-model_task",
         "--model_task",
         default=ModelTask.SEQ2SEQ,
-        choices=[ModelTask.SEQ2SEQ, ModelTask.LANGUAGE_MODEL],
+        choices=[ModelTask.SEQ2SEQ, ModelTask.LANGUAGE_MODEL, ModelTask.AC],
         help="Type of task for the model (seq2seq, lm, ac, a2c or a3c)",
     )
 
