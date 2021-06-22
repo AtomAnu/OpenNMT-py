@@ -189,9 +189,8 @@ class LossComputeBase(nn.Module):
         trunc_range = (trunc_start, trunc_start + trunc_size)
         shard_state = self._make_shard_state(batch, output, trunc_range, attns)
         # TODO remove the print lines below
-        print('trunc size: {}'.format(trunc_size))
-        print('trunc range: {}'.format(trunc_range))
-        print('shard_state: {}'.format(shard_state))
+        print('shard_state[output]: {}'.format(shard_state["output"].shape))
+        print('shard_state[target]: {}'.format(shard_state["target"].shape))
         if shard_size == 0:
             loss, stats = self._compute_loss(batch, **shard_state)
             return loss / float(normalization), stats
@@ -357,11 +356,6 @@ class CommonLossCompute(LossComputeBase):
     def _make_shard_state(self, batch, output, range_, attns=None):
         range_start = range_[0] + self.tgt_shift_index
         range_end = range_[1]
-
-        # TODO remove the print lines below
-        print('range start: {}'.format(range_start))
-        print('range end: {}'.format(range_end))
-
         shard_state = {
             "output": output,
             "target": batch.tgt[range_start:range_end, :, 0],
