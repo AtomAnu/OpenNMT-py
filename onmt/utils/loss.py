@@ -189,8 +189,12 @@ class LossComputeBase(nn.Module):
         trunc_range = (trunc_start, trunc_start + trunc_size)
         shard_state = self._make_shard_state(batch, output, trunc_range, attns)
         if shard_size == 0:
+            # TODO remove the line below
+            print('Shard size is 0')
             loss, stats = self._compute_loss(batch, **shard_state)
             return loss / float(normalization), stats
+        # TODO remove the line below
+        print('Shard size is {}'.format(shard_size))
         batch_stats = onmt.utils.Statistics()
         for shard in shards(shard_state, shard_size):
             loss, stats = self._compute_loss(batch, **shard)

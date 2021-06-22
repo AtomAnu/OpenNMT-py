@@ -284,6 +284,13 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
         )
         if model_opt.share_decoder_embeddings:
             generator[0].weight = model.decoder.embeddings.word_lut.weight
+
+        if model_opt.model_task == ModelTask.AC:
+            critic_output_layer = nn.Sequential(
+            nn.Linear(model_opt.dec_rnn_size,
+                      len(fields["tgt"].base_field.vocab)),
+            Cast(torch.float32))
+            model.critic_output_layer = critic_output_layer
     else:
         tgt_base_field = fields["tgt"].base_field
         vocab_size = len(tgt_base_field.vocab)
@@ -314,6 +321,7 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
             model.decoder.embeddings.load_pretrained_vectors(
                 model_opt.pre_word_vecs_dec)
 
+    # TODO: Implement code to support AC checkpoints
     if checkpoint is not None:
         # This preserves backward-compat for models using customed layernorm
         def fix_key(s):
