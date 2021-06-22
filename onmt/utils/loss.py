@@ -298,6 +298,11 @@ class CommonLossCompute(LossComputeBase):
         # print('gtruth[0:5]: {}'.format(gtruth[0:5]))
 
         loss = self.criterion(scores, gtruth)
+
+        # TODO remove the print lines below
+        print('lambda coverage: {}'.format(self.lambda_coverage))
+        print('lambda align: {}'.format(self.lambda_align))
+
         if self.lambda_coverage != 0.0:
             coverage_loss = self._compute_coverage_loss(
                 std_attn=std_attn, coverage_attn=coverage_attn)
