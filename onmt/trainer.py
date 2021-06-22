@@ -346,6 +346,10 @@ class Trainer(object):
             else:
                 trunc_size = target_size
 
+            print('trunc size: {}'.format(trunc_size))
+            print('target size: {}'.format(target_size))
+            print('range: {}'.format(range(0, target_size - 1, trunc_size)))
+
             src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                 else (batch.src, None)
             if src_lengths is not None:
