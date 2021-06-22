@@ -188,13 +188,13 @@ class LossComputeBase(nn.Module):
             trunc_size = batch.tgt.size(0) - trunc_start
         trunc_range = (trunc_start, trunc_start + trunc_size)
         shard_state = self._make_shard_state(batch, output, trunc_range, attns)
+        # TODO remove the print lines below
+        print('trunc size: {}'.format(trunc_size))
+        print('trunc range: {}'.format(trunc_range))
+        print('shard_state: {}'.format(shard_state))
         if shard_size == 0:
-            # TODO remove the line below
-            print('Shard size is 0')
             loss, stats = self._compute_loss(batch, **shard_state)
             return loss / float(normalization), stats
-        # TODO remove the line below
-        print('Shard size is {}'.format(shard_size))
         batch_stats = onmt.utils.Statistics()
         for shard in shards(shard_state, shard_size):
             loss, stats = self._compute_loss(batch, **shard)
@@ -292,17 +292,7 @@ class CommonLossCompute(LossComputeBase):
         scores = self.generator(bottled_output)
         gtruth = target.view(-1)
 
-        # TODO remove the print lines below
-        # print('scores shape: {}'.format(scores.shape))
-        # print('gtruth shape: {}'.format(gtruth.shape))
-        # print('gtruth[0:5]: {}'.format(gtruth[0:5]))
-
         loss = self.criterion(scores, gtruth)
-
-        # TODO remove the print lines below
-        print('lambda coverage: {}'.format(self.lambda_coverage))
-        print('lambda align: {}'.format(self.lambda_align))
-
         if self.lambda_coverage != 0.0:
             coverage_loss = self._compute_coverage_loss(
                 std_attn=std_attn, coverage_attn=coverage_attn)
@@ -367,6 +357,11 @@ class CommonLossCompute(LossComputeBase):
     def _make_shard_state(self, batch, output, range_, attns=None):
         range_start = range_[0] + self.tgt_shift_index
         range_end = range_[1]
+
+        # TODO remove the print lines below
+        print('range start: {}'.format(range_start))
+        print('range end: {}'.format(range_end))
+
         shard_state = {
             "output": output,
             "target": batch.tgt[range_start:range_end, :, 0],
