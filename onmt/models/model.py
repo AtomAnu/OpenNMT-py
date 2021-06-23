@@ -123,8 +123,12 @@ class ACNMTModel(BaseModel):
                                       with_align=with_align)
         return dec_out, attns
 
-    def sample(self):
-        pass
+    def sample(self, src, lengths, bptt=False, with_align=False):
+
+        enc_state, memory_bank, lengths = self.encoder(src, lengths)
+
+        if not bptt:
+            self.decoder.init_state(src, memory_bank, enc_state)
 
     def update_dropout(self, dropout):
         self.encoder.update_dropout(dropout)

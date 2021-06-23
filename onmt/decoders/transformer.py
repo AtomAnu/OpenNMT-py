@@ -435,6 +435,10 @@ class TransformerDecoder(TransformerDecoderBase):
 
     def forward(self, tgt, memory_bank=None, step=None, **kwargs):
         """Decode, possibly stepwise."""
+
+        # TODO to be removed
+        print(step)
+
         if memory_bank is None:
             memory_bank = self.embeddings(tgt)
         if step == 0:
