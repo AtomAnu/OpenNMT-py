@@ -68,16 +68,14 @@ class NMTModel(BaseModel):
                                       memory_lengths=lengths,
                                       with_align=with_align)
 
-        print('dec_in: {}'.format(dec_in.shape))
-        print('dec_in[0]: {}'.format(dec_in[0].shape))
-
         dec_word = dec_in[0].unsqueeze(0)
-        print(dec_word)
-        print(tgt[-1])
         test_dec_out, test_attns = self.decoder(dec_word, memory_bank,
                                                 step=0,
                                                 memory_lengths=lengths,
                                                 with_align=with_align)
+
+        scores = self.generator(test_dec_out)
+        print(scores)
 
         return dec_out, attns
 
