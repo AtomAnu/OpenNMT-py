@@ -1,4 +1,5 @@
 """ Onmt NMT Model base class definition """
+import torch
 import torch.nn as nn
 
 
@@ -67,15 +68,18 @@ class NMTModel(BaseModel):
         dec_out, attns = self.decoder(dec_in, memory_bank,
                                       memory_lengths=lengths,
                                       with_align=with_align)
-
+        step = 0
         dec_word = dec_in[0].unsqueeze(0)
-        test_dec_out, test_attns = self.decoder(dec_word, memory_bank,
-                                                step=0,
-                                                memory_lengths=lengths,
-                                                with_align=with_align)
+        while 3 not in dec_word:
+            print(dec_word)
+            test_dec_out, test_attns = self.decoder(dec_word, memory_bank,
+                                                    step=step,
+                                                    memory_lengths=lengths,
+                                                    with_align=with_align)
 
-        scores = self.generator(test_dec_out)
-        print('scores: {}'.format(scores.shape))
+            scores = self.generator(test_dec_out)
+            dec_word = torch.argmax(scores, 2).unsqueeze(0)
+            step += 1
 
         return dec_out, attns
 
