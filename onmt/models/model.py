@@ -71,15 +71,13 @@ class NMTModel(BaseModel):
         print('dec_in: {}'.format(dec_in.shape))
         print('dec_in[0]: {}'.format(dec_in[0].shape))
 
-        test_dec_out, test_attns = self.decoder(dec_in[0].unsqueeze(0), memory_bank,
+        dec_word = dec_in[0].unsqueeze(0)
+        print(dec_word)
+        print(tgt[-1])
+        test_dec_out, test_attns = self.decoder(dec_word, memory_bank,
                                                 step=0,
                                                 memory_lengths=lengths,
                                                 with_align=with_align)
-
-        print('dec_out: {}'.format(dec_out.shape))
-        print('test_dec_out: {}'.format(test_dec_out.shape))
-        print('attns: {}'.format(attns.shape))
-        print('test_attns: {}'.format(test_attns.shape))
 
         return dec_out, attns
 
