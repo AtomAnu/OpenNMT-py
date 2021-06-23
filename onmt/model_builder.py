@@ -152,7 +152,10 @@ def build_task_specific_model(model_opt, fields):
     for _, f in fields["tgt"]:
         print(f.init_token)
         print(f.vocab.stoi[f.init_token])
-
+        print(f.pad_token)
+        print(f.vocab.stoi[f.pad_token])
+        print(f.eos_token)
+        print(f.vocab.stoi[f.eos_token])
     # Share the embedding matrix - preprocess with share_vocab required.
     if model_opt.share_embeddings:
         # src/tgt vocab should be the same if `-share_vocab` is specified.
