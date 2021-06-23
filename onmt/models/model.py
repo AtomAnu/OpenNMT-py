@@ -61,6 +61,8 @@ class NMTModel(BaseModel):
     def forward(self, src, tgt, lengths, bptt=False, with_align=False):
         dec_in = tgt[:-1]  # exclude last target from inputs
 
+        print('dec_in: {}'.shape(dec_in.shape))
+
         enc_state, memory_bank, lengths = self.encoder(src, lengths)
 
         if not bptt:
