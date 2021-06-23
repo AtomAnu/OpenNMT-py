@@ -78,7 +78,7 @@ class NMTModel(BaseModel):
                                                     with_align=with_align)
 
             scores = self.generator(test_dec_out)
-            dec_word = torch.argmax(scores, 2).unsqueeze(0)
+            dec_word = torch.argmax(scores, 2).unsqueeze(2)
             step += 1
 
         return dec_out, attns
