@@ -58,10 +58,17 @@ class NMTModel(BaseModel):
         self.encoder = encoder
         self.decoder = decoder
 
+        # TODO to be removed
+        self.max_len = 0
+
     def forward(self, src, tgt, lengths, bptt=False, with_align=False):
         dec_in = tgt[:-1]  # exclude last target from inputs
 
-        print('dec_in: {}'.format(dec_in.shape))
+        # TODO to be removed
+        # print('dec_in: {}'.format(dec_in.shape))
+        if self.max_len < dec_in.shape[0]:
+            self.max_len = dec_in.shape[0]
+            print('New max length: {}'.format(self.max_len))
 
         enc_state, memory_bank, lengths = self.encoder(src, lengths)
 
@@ -70,19 +77,21 @@ class NMTModel(BaseModel):
         dec_out, attns = self.decoder(dec_in, memory_bank,
                                       memory_lengths=lengths,
                                       with_align=with_align)
-        step = 0
-        dec_word = dec_in[0].unsqueeze(0)
-        while 3 not in dec_word:
-            print(dec_word.shape)
-            print(dec_word)
-            test_dec_out, test_attns = self.decoder(dec_word, memory_bank,
-                                                    step=step,
-                                                    memory_lengths=lengths,
-                                                    with_align=with_align)
 
-            scores = self.generator(test_dec_out)
-            dec_word = torch.argmax(scores, 2).unsqueeze(2)
-            step += 1
+        # TODO to be removed
+        # step = 0
+        # dec_word = dec_in[0].unsqueeze(0)
+        # while 3 not in dec_word:
+        #     print(dec_word.shape)
+        #     print(dec_word)
+        #     test_dec_out, test_attns = self.decoder(dec_word, memory_bank,
+        #                                             step=step,
+        #                                             memory_lengths=lengths,
+        #                                             with_align=with_align)
+        #
+        #     scores = self.generator(test_dec_out)
+        #     dec_word = torch.argmax(scores, 2).unsqueeze(2)
+        #     step += 1
 
         return dec_out, attns
 
