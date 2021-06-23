@@ -437,7 +437,7 @@ class TransformerDecoder(TransformerDecoderBase):
         """Decode, possibly stepwise."""
 
         # TODO to be removed
-        print(step)
+        print('Step: {}'.format(step))
 
         if memory_bank is None:
             memory_bank = self.embeddings(tgt)
