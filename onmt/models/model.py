@@ -71,7 +71,7 @@ class NMTModel(BaseModel):
         step = 0
         dec_word = dec_in[0].unsqueeze(0)
         while 3 not in dec_word:
-            print(dec_word)
+            print(dec_word.shape)
             test_dec_out, test_attns = self.decoder(dec_word, memory_bank,
                                                     step=step,
                                                     memory_lengths=lengths,
