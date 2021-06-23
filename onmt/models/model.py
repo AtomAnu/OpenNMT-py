@@ -75,7 +75,7 @@ class NMTModel(BaseModel):
                                                 with_align=with_align)
 
         scores = self.generator(test_dec_out)
-        print(scores)
+        print('scores: {}'.format(scores.shape))
 
         return dec_out, attns
 
