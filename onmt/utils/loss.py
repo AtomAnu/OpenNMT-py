@@ -69,7 +69,7 @@ def build_loss_compute(model, tgt_field, opt, train=True):
                 f"No copy generator loss defined for task {opt.model_task}"
             )
     else:
-        if opt.model_task == ModelTask.SEQ2SEQ or opt.train_model == TrainMode.ACTOR:
+        if opt.model_task == ModelTask.SEQ2SEQ or opt.train_mode == TrainMode.ACTOR:
             compute = NMTLossCompute(
                 criterion,
                 loss_gen,
