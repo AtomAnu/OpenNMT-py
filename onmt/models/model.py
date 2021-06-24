@@ -1,7 +1,7 @@
 """ Onmt NMT Model base class definition """
 import torch
 import torch.nn as nn
-
+from onmt.constants import TrainMode
 
 class BaseModel(nn.Module):
     """
@@ -78,21 +78,6 @@ class NMTModel(BaseModel):
                                       memory_lengths=lengths,
                                       with_align=with_align)
 
-        # TODO to be removed
-        # step = 0
-        # dec_word = dec_in[0].unsqueeze(0)
-        # while 3 not in dec_word:
-        #     print(dec_word.shape)
-        #     print(dec_word)
-        #     test_dec_out, test_attns = self.decoder(dec_word, memory_bank,
-        #                                             step=step,
-        #                                             memory_lengths=lengths,
-        #                                             with_align=with_align)
-        #
-        #     scores = self.generator(test_dec_out)
-        #     dec_word = torch.argmax(scores, 2).unsqueeze(2)
-        #     step += 1
-
         return dec_out, attns
 
     def update_dropout(self, dropout):
@@ -129,31 +114,47 @@ class ACNMTModel(BaseModel):
       decoder (onmt.decoders.DecoderBase): a decoder object
     """
 
-    def __init__(self, actor_encoder, actor_decoder, critic_encoder, critic_decoder):
+    def __init__(self, actor_encoder, actor_decoder, critic_encoder, critic_decoder, train_mode):
         super(ACNMTModel, self).__init__(actor_encoder, actor_decoder)
         self.encoder = actor_encoder
         self.decoder = actor_decoder
         self.critic_encoder = critic_encoder
         self.critic_decoder = critic_decoder
+        self.train_mode = train_mode
 
     def forward(self, src, tgt, lengths, bptt=False, with_align=False):
-        dec_in = tgt[:-1]  # exclude last target from inputs
 
         enc_state, memory_bank, lengths = self.encoder(src, lengths)
 
         if not bptt:
             self.decoder.init_state(src, memory_bank, enc_state)
-        dec_out, attns = self.decoder(dec_in, memory_bank,
-                                      memory_lengths=lengths,
-                                      with_align=with_align)
-        return dec_out, attns
 
-    def sample(self, src, lengths, bptt=False, with_align=False):
+        if self.train_mode == TrainMode.ACTOR:
+            dec_in = tgt[:-1]  # exclude last target from inputs
+            dec_out, attns = self.decoder(dec_in, memory_bank,
+                                          memory_lengths=lengths,
+                                          with_align=with_align)
+            return dec_out, attns
+        else:
+            dec_in = tgt[0].unsqueeze(0)
+            model_out = dec_in
+            for step in range(0, tgt.shape[0]):
+                dec_out, attns = self.decoder(dec_in, memory_bank,
+                                                        step=step,
+                                                        memory_lengths=lengths,
+                                                        with_align=with_align)
 
-        enc_state, memory_bank, lengths = self.encoder(src, lengths)
+                scores = self.generator(dec_out)
+                dec_in = torch.argmax(scores, 2).unsqueeze(2)
+                model_out = torch.cat([model_out, dec_in], dim=0)
+            return model_out
 
-        if not bptt:
-            self.decoder.init_state(src, memory_bank, enc_state)
+    # def sample(self, src, lengths, bptt=False, with_align=False):
+    #
+    #     enc_state, memory_bank, lengths = self.encoder(src, lengths)
+    #
+    #     if not bptt:
+    #         self.decoder.init_state(src, memory_bank, enc_state)
 
     def update_dropout(self, dropout):
         self.encoder.update_dropout(dropout)

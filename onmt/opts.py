@@ -3,7 +3,7 @@ import configargparse
 
 from onmt.models.sru import CheckSRU
 from onmt.transforms import AVAILABLE_TRANSFORMS
-from onmt.constants import ModelTask
+from onmt.constants import ModelTask, TrainMode
 from onmt.modules.position_ffn import ACTIVATION_FUNCTIONS
 from onmt.modules.position_ffn import ActivationFunction
 
@@ -253,6 +253,16 @@ def model_opts(parser):
         default=ModelTask.SEQ2SEQ,
         choices=[ModelTask.SEQ2SEQ, ModelTask.LANGUAGE_MODEL, ModelTask.AC],
         help="Type of task for the model (seq2seq, lm, ac, a2c or a3c)",
+    )
+
+    # Training Mode Options (Specific to Actor-Critic Models)
+    group = parser.add_argument_group("Model- TrainMode")
+    group.add(
+        "-train_mode",
+        "--train_mode",
+        default=TrainMode.ACTOR,
+        choices=[TrainMode.ACTOR, TrainMode.CRITIC, TrainMode.AC],
+        help="Pre-training/Training mode for Actor-Critic models (actor, critic or ac)"
     )
 
     # Encoder-Decoder Options

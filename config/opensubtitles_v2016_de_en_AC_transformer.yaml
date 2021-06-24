@@ -62,6 +62,7 @@ normalization: "tokens"
 
 # Model
 model_task: ac
+train_mode: actor
 encoder_type: transformer
 decoder_type: transformer
 enc_layers: 6

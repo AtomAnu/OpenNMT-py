@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import onmt
 from onmt.modules.sparse_losses import SparsemaxLoss
 from onmt.modules.sparse_activations import LogSparsemax
-from onmt.constants import ModelTask
+from onmt.constants import ModelTask, TrainMode
 
 
 def build_loss_compute(model, tgt_field, opt, train=True):
@@ -42,6 +42,7 @@ def build_loss_compute(model, tgt_field, opt, train=True):
     elif isinstance(model.generator[-1], LogSparsemax):
         criterion = SparsemaxLoss(ignore_index=padding_idx, reduction='sum')
     else:
+        print("Use NLLLoss as the criterion")
         criterion = nn.NLLLoss(ignore_index=padding_idx, reduction='sum')
 
     # if the loss function operates on vectors of raw logits instead of
@@ -68,7 +69,7 @@ def build_loss_compute(model, tgt_field, opt, train=True):
                 f"No copy generator loss defined for task {opt.model_task}"
             )
     else:
-        if opt.model_task == ModelTask.SEQ2SEQ:
+        if opt.model_task == ModelTask.SEQ2SEQ or opt.train_model == TrainMode.ACTOR:
             compute = NMTLossCompute(
                 criterion,
                 loss_gen,
