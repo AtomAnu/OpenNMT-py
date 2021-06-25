@@ -176,7 +176,7 @@ class ACNMTModel(BaseModel):
         # TODO remove the print line
         print('tgt shape: {}'.format(tgt.shape))
 
-        lengths = torch.tensor([tgt.shape[0]]).repeat(tgt.shape[1])
+        lengths = torch.tensor([tgt.shape[0]]).repeat(tgt.shape[1]).to('cuda')
 
         enc_state, memory_bank, lengths = self.critic_encoder(tgt.unsqueeze(2), lengths)
 
