@@ -181,7 +181,7 @@ class ACNMTModel(BaseModel):
         enc_state, memory_bank, lengths = self.critic_encoder(tgt.unsqueeze(2), lengths)
 
         if not bptt:
-            self.critic_decoder.init_state(src, memory_bank, enc_state)
+            self.critic_decoder.init_state(tgt, memory_bank, enc_state)
 
         dec_in = gen_seq
         dec_out, attns = self.critic_decoder(dec_in, memory_bank,
