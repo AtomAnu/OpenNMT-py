@@ -167,7 +167,7 @@ class ACNMTModel(BaseModel):
                     policy_dist = torch.cat([policy_dist, scores.exp()], dim=0)
             return gen_seq, policy_dist
 
-    def critic_forward(self, tgt, gen_seq, lengths, bptt=False, with_align=False):
+    def critic_forward(self, tgt, gen_seq, lengths=None, bptt=False, with_align=False):
 
         enc_state, memory_bank, lengths = self.critic_encoder(tgt, lengths)
 
