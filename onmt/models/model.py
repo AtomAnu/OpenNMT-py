@@ -175,7 +175,7 @@ class ACNMTModel(BaseModel):
         # TODO remove the print line
         print('tgt shape: {}'.format(tgt.shape))
 
-        enc_state, memory_bank, lengths = self.critic_encoder(tgt, lengths)
+        enc_state, memory_bank, lengths = self.critic_encoder(tgt.unsqueeze(2), lengths)
 
         if not bptt:
             self.critic_decoder.init_state(src, memory_bank, enc_state)
