@@ -63,6 +63,10 @@ def main(opt, fields, transforms_cls, checkpoint, device_id,
 
     model_opt = _get_model_opts(opt, checkpoint=checkpoint)
 
+    # TODO remove the lines below
+    ckpt = torch.load(opt.train_from)
+    print(ckpt)
+
     # Build model.
     model = build_model(model_opt, opt, fields, checkpoint)
     model.count_parameters(log=logger.info)
