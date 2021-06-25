@@ -169,10 +169,6 @@ def main():
     parser = _get_parser()
 
     opt, unknown = parser.parse_known_args()
-
-    # TODO remove the print line
-    print('train_mode: {}'.format(opt.train_mode))
-
     train(opt)
 
 

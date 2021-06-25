@@ -184,9 +184,12 @@ def build_task_specific_model(model_opt, fields):
             share_embeddings=model_opt.share_embeddings,
             src_emb=tgt_emb,
         )
+
+        # TODO remove the train_mode hot fix
+
         return onmt.models.ACNMTModel(actor_encoder=actor_encoder, actor_decoder=actor_decoder,
                                       critic_encoder=critic_encoder, critic_decoder=critic_decoder,
-                                      train_mode=model_opt.train_mode)
+                                      train_mode='critic')
     else:
         raise ValueError(f"No model defined for {model_opt.model_task} task")
 
