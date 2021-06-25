@@ -176,6 +176,8 @@ class ACNMTModel(BaseModel):
         # TODO remove the print line
         print('tgt shape: {}'.format(tgt.shape))
 
+        lengths = torch.tensor([tgt.shape[0]]).repeat(tgt.shape[1])
+
         enc_state, memory_bank, lengths = self.critic_encoder(tgt.unsqueeze(2), lengths)
 
         if not bptt:
