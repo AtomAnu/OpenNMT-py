@@ -151,7 +151,7 @@ class ACNMTModel(BaseModel):
                 # TODO remove the print lines
                 print('gen_seq: {}'.format(gen_seq.shape))
 
-                dec_out, attns = self.decoder(gen_seq, memory_bank,
+                dec_out, attns = self.decoder(gen_seq[-1], memory_bank,
                                               step=step,
                                               memory_lengths=lengths,
                                               with_align=with_align)
