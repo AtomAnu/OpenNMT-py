@@ -42,7 +42,6 @@ def build_loss_compute(model, tgt_field, opt, train=True):
     elif isinstance(model.generator[-1], LogSparsemax):
         criterion = SparsemaxLoss(ignore_index=padding_idx, reduction='sum')
     else:
-        print("Use NLLLoss as the criterion")
         criterion = nn.NLLLoss(ignore_index=padding_idx, reduction='sum')
 
     # if the loss function operates on vectors of raw logits instead of
