@@ -146,12 +146,13 @@ class ACNMTModel(BaseModel):
             return dec_out, attns
         else:
             gen_seq = tgt[0].unsqueeze(0)
+            gen_word = gen_seq
             for step in range(0, tgt.shape[0]):
 
                 # TODO remove the print lines
                 print('gen_seq: {}'.format(gen_seq.shape))
 
-                dec_out, attns = self.decoder(gen_seq[-1], memory_bank,
+                dec_out, attns = self.decoder(gen_word, memory_bank,
                                               step=step,
                                               memory_lengths=lengths,
                                               with_align=with_align)
