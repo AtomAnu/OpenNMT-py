@@ -86,6 +86,11 @@ def build_loss_compute(model, tgt_field, opt, train=True):
                 lambda_coverage=opt.lambda_coverage,
                 lambda_align=opt.lambda_align,
             )
+        elif opt.train_mode == TrainMode.CRITIC:
+            compute = ACLossCompute(
+                criterion,
+                loss_gen
+            )
         else:
             raise ValueError(
                 f"No compute loss defined for task {opt.model_task}"
@@ -398,15 +403,22 @@ class ACLossCompute(LossComputeBase):
 
     Implement loss compatible with coverage and alignement shards
     """
-    def __init__(self, criterion, generator, normalization="sents",
+    def __init__(self, criterion, generator, model, normalization="sents",
                  lambda_coverage=0.0, lambda_align=0.0, tgt_shift_index=1):
         super(ACLossCompute, self).__init__(criterion, generator)
         self.lambda_coverage = lambda_coverage
         self.lambda_align = lambda_align
         self.tgt_shift_index = tgt_shift_index
+        self.model = model
 
     def _compute_loss(self, batch, output, target, std_attn=None,
                       coverage_attn=None, align_head=None, ref_align=None):
+
+        # TODO remove the print lines
+        print('Output: {}'.format(output.shape))
+        print('Target: {}'.format(target.shape))
+
+        Q_mod, Q_all = self.model.critic_forward()
 
         bottled_output = self._bottle(output)
 

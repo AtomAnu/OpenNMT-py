@@ -152,7 +152,14 @@ class ACNMTModel(BaseModel):
                 scores = self.generator(dec_out)
                 gen_word = torch.argmax(scores, 2).unsqueeze(2)
                 gen_seq = torch.cat([gen_seq, gen_word], dim=0)
-            return gen_seq
+
+                print(scores.shape)
+                if len(scores.shape) < 3: scores = scores.unsqueeze(0)
+                if step == 0:
+                    policy_dist = scores.exp()
+                else:
+                    policy_dist = torch.cat([policy_dist, scores.exp()], dim=0)
+            return gen_seq, policy_dist
 
     def critic_forward(self, tgt, gen_seq, lengths, bptt=False, with_align=False):
 
@@ -170,11 +177,15 @@ class ACNMTModel(BaseModel):
 
         Q_mod = Q_all.gather(2, gen_seq.to(torch.int64))
 
-        return Q_mod
+        # TODO remove the print lines
+        print('Q_mod: {}'.format(Q_mod.shape))
+        print('Q_all: {}'.format(Q_all.shape))
 
-    def target_critic_forward(self):
+        return Q_mod, Q_all
 
-        pass
+    # def target_critic_forward(self, ):
+    #
+    #     pass
 
     def update_dropout(self, dropout):
         self.encoder.update_dropout(dropout)
