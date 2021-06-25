@@ -148,15 +148,18 @@ class ACNMTModel(BaseModel):
             dec_out, attns = self.decoder(dec_in, memory_bank,
                                           memory_lengths=lengths,
                                           with_align=with_align)
+
+            print(tgt.shape)
+            print(dec_out.shape)
+
             return dec_out, attns
         else:
-            print(tgt)
             gen_seq = tgt[0].unsqueeze(0)
             gen_word = gen_seq
             for step in range(0, tgt.shape[0]):
 
                 # TODO remove the print lines
-                print(self.fields['tgt'].base_field.vocab.itos[int(gen_word[:,0])])
+                # print(self.fields['tgt'].base_field.vocab.itos[int(gen_word[:,0])])
 
                 dec_out, attns = self.decoder(gen_word, memory_bank,
                                               step=step,
