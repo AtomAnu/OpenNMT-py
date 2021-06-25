@@ -405,6 +405,19 @@ class ACLossCompute(LossComputeBase):
         self.lambda_align = lambda_align
         self.tgt_shift_index = tgt_shift_index
 
+    def _compute_loss(self, batch, output, target, std_attn=None,
+                      coverage_attn=None, align_head=None, ref_align=None):
+
+        bottled_output = self._bottle(output)
+
+        scores = self.generator(bottled_output)
+        gtruth = target.view(-1)
+
+        loss = self.criterion(scores, gtruth)
+        stats = self._stats(loss.clone(), scores, gtruth)
+
+        return loss, stats
+
     def _add_coverage_shard_state(self, shard_state, attns):
         coverage = attns.get("coverage", None)
         std = attns.get("std", None)
@@ -420,19 +433,6 @@ class ACLossCompute(LossComputeBase):
         )
         shard_state.update({"std_attn": attns.get("std"),
                             "coverage_attn": coverage})
-
-    def _compute_loss(self, batch, output, target, std_attn=None,
-                      coverage_attn=None, align_head=None, ref_align=None):
-
-        bottled_output = self._bottle(output)
-
-        scores = self.generator(bottled_output)
-        gtruth = target.view(-1)
-
-        loss = self.criterion(scores, gtruth)
-        stats = self._stats(loss.clone(), scores, gtruth)
-
-        return loss, stats
 
     def _compute_coverage_loss(self, std_attn, coverage_attn):
         covloss = torch.min(std_attn, coverage_attn).sum()

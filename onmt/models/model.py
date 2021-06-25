@@ -2,6 +2,7 @@
 import torch
 import torch.nn as nn
 from onmt.constants import TrainMode
+import copy
 
 class BaseModel(nn.Module):
     """
@@ -120,6 +121,11 @@ class ACNMTModel(BaseModel):
         self.decoder = actor_decoder
         self.critic_encoder = critic_encoder
         self.critic_decoder = critic_decoder
+
+        # create a target critic
+        self.target_critic_encoder = copy.deepcopy(self.critic_encoder)
+        self.target_critic_decoder = copy.deepcopy(self.critic_decoder)
+
         self.train_mode = train_mode
 
     def forward(self, src, tgt, lengths, bptt=False, with_align=False):
@@ -136,25 +142,39 @@ class ACNMTModel(BaseModel):
                                           with_align=with_align)
             return dec_out, attns
         else:
-            dec_in = tgt[0].unsqueeze(0)
-            model_out = dec_in
+            gen_seq = tgt[0].unsqueeze(0)
             for step in range(0, tgt.shape[0]):
-                dec_out, attns = self.decoder(dec_in, memory_bank,
-                                                        step=step,
-                                                        memory_lengths=lengths,
-                                                        with_align=with_align)
+                dec_out, attns = self.decoder(gen_seq, memory_bank,
+                                              step=step,
+                                              memory_lengths=lengths,
+                                              with_align=with_align)
 
                 scores = self.generator(dec_out)
-                dec_in = torch.argmax(scores, 2).unsqueeze(2)
-                model_out = torch.cat([model_out, dec_in], dim=0)
-            return model_out
+                gen_word = torch.argmax(scores, 2).unsqueeze(2)
+                gen_seq = torch.cat([gen_seq, gen_word], dim=0)
+            return gen_seq
 
-    # def sample(self, src, lengths, bptt=False, with_align=False):
-    #
-    #     enc_state, memory_bank, lengths = self.encoder(src, lengths)
-    #
-    #     if not bptt:
-    #         self.decoder.init_state(src, memory_bank, enc_state)
+    def critic_forward(self, tgt, gen_seq, lengths, bptt=False, with_align=False):
+
+        enc_state, memory_bank, lengths = self.critic_encoder(tgt, lengths)
+
+        if not bptt:
+            self.critic_decoder.init_state(src, memory_bank, enc_state)
+
+        dec_in = gen_seq
+        dec_out, attns = self.critic_decoder(dec_in, memory_bank,
+                                             memory_lengths=lengths,
+                                             with_align=with_align)
+
+        Q_all = self.critic_output_layer(dec_out)
+
+        Q_mod = Q_all.gather(2, gen_seq.to(torch.int64))
+
+        return Q_mod
+
+    def target_critic_forward(self):
+
+        pass
 
     def update_dropout(self, dropout):
         self.encoder.update_dropout(dropout)
