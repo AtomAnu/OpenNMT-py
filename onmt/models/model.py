@@ -115,12 +115,13 @@ class ACNMTModel(BaseModel):
       decoder (onmt.decoders.DecoderBase): a decoder object
     """
 
-    def __init__(self, actor_encoder, actor_decoder, critic_encoder, critic_decoder, train_mode):
+    def __init__(self, actor_encoder, actor_decoder, critic_encoder, critic_decoder, train_mode, fields):
         super(ACNMTModel, self).__init__(actor_encoder, actor_decoder)
         self.encoder = actor_encoder
         self.decoder = actor_decoder
         self.critic_encoder = critic_encoder
         self.critic_decoder = critic_decoder
+        self.fields = fields
 
         # # create a target critic
         # self.target_critic_encoder = copy.deepcopy(self.critic_encoder)
@@ -154,7 +155,7 @@ class ACNMTModel(BaseModel):
             for step in range(0, tgt.shape[0]):
 
                 # TODO remove the print lines
-                print('gen_seq: {}'.format(gen_seq.shape))
+                print(self.fields['tgt'].base_field.vocab.itos[int(gen_word[:,0])])
 
                 dec_out, attns = self.decoder(gen_word, memory_bank,
                                               step=step,
