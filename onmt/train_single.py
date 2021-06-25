@@ -65,7 +65,7 @@ def main(opt, fields, transforms_cls, checkpoint, device_id,
 
     # TODO remove the lines below
     ckpt = torch.load(opt.train_from)
-    print(ckpt)
+    print(ckpt.keys())
 
     # Build model.
     model = build_model(model_opt, opt, fields, checkpoint)
