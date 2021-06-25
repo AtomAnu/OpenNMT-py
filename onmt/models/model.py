@@ -147,6 +147,10 @@ class ACNMTModel(BaseModel):
         else:
             gen_seq = tgt[0].unsqueeze(0)
             for step in range(0, tgt.shape[0]):
+
+                # TODO remove the print lines
+                print('gen_seq: {}'.format(gen_seq.shape))
+
                 dec_out, attns = self.decoder(gen_seq, memory_bank,
                                               step=step,
                                               memory_lengths=lengths,
@@ -156,8 +160,6 @@ class ACNMTModel(BaseModel):
                 gen_word = torch.argmax(scores, 2).unsqueeze(2)
                 gen_seq = torch.cat([gen_seq, gen_word], dim=0)
 
-                print(scores.shape)
-                if len(scores.shape) < 3: scores = scores.unsqueeze(0)
                 if step == 0:
                     policy_dist = scores.exp()
                 else:
