@@ -89,7 +89,8 @@ def build_loss_compute(model, tgt_field, opt, train=True):
         elif opt.train_mode == TrainMode.CRITIC:
             compute = ACLossCompute(
                 criterion,
-                loss_gen
+                loss_gen,
+                model
             )
         else:
             raise ValueError(
