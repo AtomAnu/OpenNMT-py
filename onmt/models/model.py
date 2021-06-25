@@ -133,10 +133,11 @@ class ACNMTModel(BaseModel):
 
     def forward(self, src, tgt, lengths, bptt=False, with_align=False):
 
-        enc_state, memory_bank, lengths = self.encoder(src, lengths)
-
         # TODO remove the print line
         print('src shape: {}'.format(src.shape))
+        print('src len:{}'.format(lengths.shape))
+
+        enc_state, memory_bank, lengths = self.encoder(src, lengths)
 
         if not bptt:
             self.decoder.init_state(src, memory_bank, enc_state)
