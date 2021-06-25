@@ -150,6 +150,7 @@ class ACNMTModel(BaseModel):
                                           with_align=with_align)
             return dec_out, attns
         else:
+            print(tgt)
             gen_seq = tgt[0].unsqueeze(0)
             gen_word = gen_seq
             for step in range(0, tgt.shape[0]):
