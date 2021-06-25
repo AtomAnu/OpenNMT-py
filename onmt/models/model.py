@@ -135,6 +135,9 @@ class ACNMTModel(BaseModel):
 
         enc_state, memory_bank, lengths = self.encoder(src, lengths)
 
+        # TODO remove the print line
+        print('src shape: {}'.format(src.shape))
+
         if not bptt:
             self.decoder.init_state(src, memory_bank, enc_state)
 
@@ -168,6 +171,9 @@ class ACNMTModel(BaseModel):
             return gen_seq, policy_dist
 
     def critic_forward(self, tgt, gen_seq, lengths=None, bptt=False, with_align=False):
+
+        # TODO remove the print line
+        print('tgt shape: {}'.format(tgt.shape))
 
         enc_state, memory_bank, lengths = self.critic_encoder(tgt, lengths)
 
