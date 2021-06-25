@@ -419,7 +419,7 @@ class ACLossCompute(LossComputeBase):
         print('Output: {}'.format(output.shape))
         print('Target: {}'.format(target.shape))
 
-        Q_mod, Q_all = self.model.critic_forward()
+        Q_mod, Q_all = self.model.critic_forward(target, output)
 
         bottled_output = self._bottle(output)
 

@@ -351,10 +351,6 @@ class Trainer(object):
             if src_lengths is not None:
                 report_stats.n_src_words += src_lengths.sum().item()
 
-            # TODO remove the print lines
-            print('src len: {}'.format(src_lengths))
-            print('src: {}'.format(src.shape))
-
             tgt_outer = batch.tgt
 
             bptt = False

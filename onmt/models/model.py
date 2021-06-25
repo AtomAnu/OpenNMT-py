@@ -128,6 +128,9 @@ class ACNMTModel(BaseModel):
 
         self.train_mode = train_mode
 
+        # TODO remove the print line
+        print('Train Mode: {}'.format(self.train_mode))
+
     def forward(self, src, tgt, lengths, bptt=False, with_align=False):
 
         enc_state, memory_bank, lengths = self.encoder(src, lengths)
