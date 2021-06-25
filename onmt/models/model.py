@@ -122,9 +122,9 @@ class ACNMTModel(BaseModel):
         self.critic_encoder = critic_encoder
         self.critic_decoder = critic_decoder
 
-        # create a target critic
-        self.target_critic_encoder = copy.deepcopy(self.critic_encoder)
-        self.target_critic_decoder = copy.deepcopy(self.critic_decoder)
+        # # create a target critic
+        # self.target_critic_encoder = copy.deepcopy(self.critic_encoder)
+        # self.target_critic_decoder = copy.deepcopy(self.critic_decoder)
 
         self.train_mode = train_mode
 
