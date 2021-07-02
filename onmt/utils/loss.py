@@ -415,17 +415,22 @@ class ACLossCompute(LossComputeBase):
                       coverage_attn=None, align_head=None, ref_align=None):
 
         # TODO remove the print lines
-        print('Output: {}'.format(output.shape))
-        print('Target: {}'.format(target.shape))
+        # print('Output: {}'.format(output.shape))
+        # print('Target: {}'.format(target.shape))
+
+        print(type(std_attn))
 
         Q_mod, Q_all = self.model.critic_forward(target, output)
 
-        bottled_output = self._bottle(output)
+        # bottled_output = self._bottle(output)
 
-        scores = self.generator(bottled_output)
+        # scores = self.generator(bottled_output)
+        scores = std_attn[1]
         gtruth = target.view(-1)
 
         loss = self.criterion(scores, gtruth)
+
+        # loss =
         stats = self._stats(loss.clone(), scores, gtruth)
 
         return loss, stats
@@ -497,6 +502,7 @@ class ACLossCompute(LossComputeBase):
         shard_state = {
             "output": output,
             "target": batch.tgt[range_start:range_end, :, 0],
+            "std_attns": attns,
         }
         if self.lambda_coverage != 0.0:
             self._add_coverage_shard_state(shard_state, attns)

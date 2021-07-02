@@ -363,6 +363,13 @@ class Trainer(object):
                     self.optim.zero_grad()
 
                 with torch.cuda.amp.autocast(enabled=self.optim.amp):
+
+                    """
+                    if opt.train_mode != 'actor' 
+                    outputs -> generated sequence(s)
+                    attns -> (policy distribution, actor's generator scores)
+                    """
+
                     outputs, attns = self.model(
                         src, tgt, src_lengths, bptt=bptt,
                         with_align=self.with_align)

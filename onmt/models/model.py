@@ -143,8 +143,7 @@ class ACNMTModel(BaseModel):
         if not bptt:
             self.decoder.init_state(src, memory_bank, enc_state)
 
-        # if self.train_mode == TrainMode.ACTOR:
-        if self.train_mode == 'critic':
+        if self.train_mode == TrainMode.ACTOR:
             dec_in = tgt[:-1]  # exclude last target from inputs
             dec_out, attns = self.decoder(dec_in, memory_bank,
                                           memory_lengths=lengths,
@@ -175,7 +174,7 @@ class ACNMTModel(BaseModel):
                     policy_dist = scores.exp()
                 else:
                     policy_dist = torch.cat([policy_dist, scores.exp()], dim=0)
-            return gen_seq, policy_dist
+            return gen_seq, (policy_dist, scores)
 
     def critic_forward(self, tgt, gen_seq, lengths=None, bptt=False, with_align=False):
 
