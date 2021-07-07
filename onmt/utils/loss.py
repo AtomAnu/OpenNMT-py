@@ -430,7 +430,7 @@ class ACLossCompute(LossComputeBase):
 
         # TODO remove the print lines
         print(gtruth)
-        print('Ground truth shape: {}'.format(gtruth.shape))
+        print('Ground truth {}'.format(gtruth))
         print('Output shape: {}'.format(output.shape))
 
         # TODO reward computation
