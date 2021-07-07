@@ -189,7 +189,7 @@ def build_task_specific_model(model_opt, fields):
 
         return onmt.models.ACNMTModel(actor_encoder=actor_encoder, actor_decoder=actor_decoder,
                                       critic_encoder=critic_encoder, critic_decoder=critic_decoder,
-                                      train_mode='critic', tgt_field=fields["tgt"].vocab)
+                                      train_mode='critic', tgt_field=fields["tgt"].base_field.vocab)
     else:
         raise ValueError(f"No model defined for {model_opt.model_task} task")
 
