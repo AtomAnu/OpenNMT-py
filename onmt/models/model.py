@@ -176,7 +176,6 @@ class ACNMTModel(BaseModel):
                 else:
                     policy_dist = torch.cat([policy_dist, scores.exp()], dim=0)
 
-            print('Check {}'.format(gen_seq.shape))
             return gen_seq, policy_dist
 
     def compute_output_mask(self, gen_seq):
