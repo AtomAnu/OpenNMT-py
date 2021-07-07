@@ -115,13 +115,14 @@ class ACNMTModel(BaseModel):
       decoder (onmt.decoders.DecoderBase): a decoder object
     """
 
-    def __init__(self, actor_encoder, actor_decoder, critic_encoder, critic_decoder, train_mode, fields):
+    def __init__(self, actor_encoder, actor_decoder, critic_encoder, critic_decoder, train_mode, tgt_field):
         super(ACNMTModel, self).__init__(actor_encoder, actor_decoder)
         self.encoder = actor_encoder
         self.decoder = actor_decoder
         self.critic_encoder = critic_encoder
         self.critic_decoder = critic_decoder
-        self.fields = fields
+        self.tgt_field = tgt_field
+        self.eos_token = tgt_field.eos_token
 
         # # create a target critic
         # self.target_critic_encoder = copy.deepcopy(self.critic_encoder)
@@ -144,13 +145,13 @@ class ACNMTModel(BaseModel):
             self.decoder.init_state(src, memory_bank, enc_state)
 
         if self.train_mode == TrainMode.ACTOR:
+
+            # TODO inspect how eos is specified
+
             dec_in = tgt[:-1]  # exclude last target from inputs
             dec_out, attns = self.decoder(dec_in, memory_bank,
                                           memory_lengths=lengths,
                                           with_align=with_align)
-
-            print(tgt.shape)
-            print(dec_out.shape)
 
             return dec_out, attns
         else:
@@ -174,7 +175,22 @@ class ACNMTModel(BaseModel):
                     policy_dist = scores.exp()
                 else:
                     policy_dist = torch.cat([policy_dist, scores.exp()], dim=0)
-            return gen_seq, (policy_dist, scores)
+            return gen_seq, policy_dist
+
+    def compute_output_mask(self, gen_seq):
+        # to be used when the decoder conditions on its own output
+        eos_idx = gen_seq.eq(self.eos_token).to(torch.int64)
+        value_range = torch.arange(gen_seq.shape[0], 0, -1)
+        output_multiplied = (eos_idx.transpose(0, 2) * value_range).transpose(0, 2)
+        first_eos_idx = torch.argmax(output_multiplied, 0, keepdim=True).squeeze()
+
+        output_mask = torch.ones(gen_seq.shape[0], gen_seq.shape[1], gen_seq.shape[2])
+
+        for row in range(0, gen_seq.shape[1]):
+            output_mask[first_eos_idx[row] + 1:, row] = 0
+
+        return output_mask
+
 
     def critic_forward(self, tgt, gen_seq, lengths=None, bptt=False, with_align=False):
 

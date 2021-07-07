@@ -367,7 +367,7 @@ class Trainer(object):
                     """
                     if opt.train_mode != 'actor' 
                     outputs -> generated sequence(s)
-                    attns -> (policy distribution, actor's generator scores)
+                    attns -> policy distribution (exp(actor's generator scores))
                     """
 
                     outputs, attns = self.model(

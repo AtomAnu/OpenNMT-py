@@ -89,7 +89,8 @@ def build_loss_compute(model, tgt_field, opt, train=True):
             compute = ACLossCompute(
                 criterion,
                 loss_gen,
-                model
+                model,
+                tgt_field.vocab
             )
         else:
             raise ValueError(
@@ -403,30 +404,44 @@ class ACLossCompute(LossComputeBase):
 
     Implement loss compatible with coverage and alignement shards
     """
-    def __init__(self, criterion, generator, model, normalization="sents",
+    def __init__(self, criterion, generator, model, tgt_vocab, normalization="sents",
                  lambda_coverage=0.0, lambda_align=0.0, tgt_shift_index=1):
         super(ACLossCompute, self).__init__(criterion, generator)
         self.lambda_coverage = lambda_coverage
         self.lambda_align = lambda_align
         self.tgt_shift_index = tgt_shift_index
         self.model = model
+        self.tgt_vocab = tgt_vocab
 
     def _compute_loss(self, batch, output, target, std_attn=None,
                       coverage_attn=None, align_head=None, ref_align=None):
 
-        # TODO remove the print lines
-        # print('Output: {}'.format(output.shape))
-        # print('Target: {}'.format(target.shape))
-
-        print(type(std_attn))
+        """
+        Q_mod.shape: [gen_seq_len x batch_size x 1]
+        Q_all.shape: [gen_seq_len x batch_size x tgt_vocab_size]
+        reward.shape: [gen_seq_len x batch_size x 1]
+        """
 
         Q_mod, Q_all = self.model.critic_forward(target, output)
 
-        # bottled_output = self._bottle(output)
-
-        # scores = self.generator(bottled_output)
-        scores = std_attn[1]
+        policy_dist = std_attn
+        scores = std_attn.log() # log(policy distribution)
         gtruth = target.view(-1)
+
+        # TODO remove the print lines
+        print(gtruth)
+        print('Ground truth shape: {}'.format(gtruth.shape))
+        print('Output shape: {}'.format(output.shape))
+
+        # TODO reward computation
+
+        reward = torch.zeros(output.shape[0], output.shape[1])
+
+        # for
+
+        """
+        critic loss = (Q_mod - (reward + (policy_dist * Q_all).sum(2))).sum(0).sum(1)
+        """
 
         loss = self.criterion(scores, gtruth)
 
