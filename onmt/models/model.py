@@ -135,19 +135,12 @@ class ACNMTModel(BaseModel):
 
     def forward(self, src, tgt, lengths, bptt=False, with_align=False):
 
-        # TODO remove the print line
-        print('src shape: {}'.format(src.shape))
-        print('src len:{}'.format(lengths.shape))
-
         enc_state, memory_bank, lengths = self.encoder(src, lengths)
 
         if not bptt:
             self.decoder.init_state(src, memory_bank, enc_state)
 
         if self.train_mode == TrainMode.ACTOR:
-
-            # TODO inspect how eos is specified
-
             dec_in = tgt[:-1]  # exclude last target from inputs
             dec_out, attns = self.decoder(dec_in, memory_bank,
                                           memory_lengths=lengths,
@@ -176,6 +169,11 @@ class ACNMTModel(BaseModel):
                 else:
                     policy_dist = torch.cat([policy_dist, scores.exp()], dim=0)
 
+            output_mask = self.compute_output_mask(gen_seq)
+            gen_seq = gen_seq * output_mask
+
+            print('Generated sequence: {}'.format(gen_seq[:,0]))
+
             return gen_seq, policy_dist
 
     def compute_output_mask(self, gen_seq):
@@ -195,9 +193,6 @@ class ACNMTModel(BaseModel):
 
     def critic_forward(self, tgt, gen_seq, lengths=None, bptt=False, with_align=False):
 
-        # TODO remove the print line
-        print('tgt shape: {}'.format(tgt.shape))
-
         lengths = torch.tensor([tgt.shape[0]]).repeat(tgt.shape[1]).to('cuda')
 
         enc_state, memory_bank, lengths = self.critic_encoder(tgt.unsqueeze(2), lengths)
@@ -213,10 +208,6 @@ class ACNMTModel(BaseModel):
         Q_all = self.critic_output_layer(dec_out)
 
         Q_mod = Q_all.gather(2, gen_seq.to(torch.int64))
-
-        # TODO remove the print lines
-        print('Q_mod: {}'.format(Q_mod.shape))
-        print('Q_all: {}'.format(Q_all.shape))
 
         return Q_mod, Q_all
 

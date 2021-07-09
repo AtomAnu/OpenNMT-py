@@ -169,7 +169,6 @@ def build_task_specific_model(model_opt, fields):
         return onmt.models.LanguageModel(decoder=decoder)
     elif model_opt.model_task == ModelTask.AC:
         logger.info('Building the AC NMT model...')
-        # TODO configure the AC NMT model
         actor_encoder, src_emb = build_encoder_with_embeddings(model_opt, fields)
         actor_decoder, _ = build_decoder_with_embeddings(
             model_opt,
@@ -185,7 +184,7 @@ def build_task_specific_model(model_opt, fields):
             src_emb=tgt_emb,
         )
 
-        # TODO remove the train_mode hot fix
+        # TODO remove train_mode hot fix
 
         return onmt.models.ACNMTModel(actor_encoder=actor_encoder, actor_decoder=actor_decoder,
                                       critic_encoder=critic_encoder, critic_decoder=critic_decoder,

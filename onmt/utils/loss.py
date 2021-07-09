@@ -10,6 +10,7 @@ import onmt
 from onmt.modules.sparse_losses import SparsemaxLoss
 from onmt.modules.sparse_activations import LogSparsemax
 from onmt.constants import ModelTask, TrainMode
+from onmt.modules.rewards import bleu_add_1
 
 
 def build_loss_compute(model, tgt_field, opt, train=True):
@@ -428,25 +429,14 @@ class ACLossCompute(LossComputeBase):
         scores = std_attn.log() # log(policy distribution)
         gtruth = target.view(-1)
 
-        # TODO remove the print lines
-        print(gtruth)
-        print('Ground truth {}'.format(target.shape))
-        print('Output shape: {}'.format(output.shape))
+        # reward = torch.zeros(output.shape[0], output.shape[1])
 
-        # TODO reward computation
+        reward = bleu_add_1(output, target)
+        critic_loss = (Q_mod - (reward + (policy_dist * Q_all).sum(2))).sum(0).sum(1)
 
-        reward = torch.zeros(output.shape[0], output.shape[1])
+        # loss = self.criterion(scores, gtruth)
 
-        # for
-
-        """
-        critic loss = (Q_mod - (reward + (policy_dist * Q_all).sum(2))).sum(0).sum(1)
-        """
-
-        loss = self.criterion(scores, gtruth)
-
-        # loss =
-        stats = self._stats(loss.clone(), scores, gtruth)
+        stats = self._stats(critic_loss.clone(), scores, gtruth)
 
         return loss, stats
 
