@@ -91,7 +91,9 @@ def build_loss_compute(model, tgt_field, opt, train=True):
                 criterion,
                 loss_gen,
                 model,
-                tgt_field.vocab
+                tgt_field.vocab,
+                padding_idx,
+                unk_idx
             )
         else:
             raise ValueError(
@@ -405,7 +407,7 @@ class ACLossCompute(LossComputeBase):
 
     Implement loss compatible with coverage and alignement shards
     """
-    def __init__(self, criterion, generator, model, tgt_vocab, normalization="sents",
+    def __init__(self, criterion, generator, model, tgt_vocab, padding_idx, unk_idx, normalization="sents",
                  lambda_coverage=0.0, lambda_align=0.0, tgt_shift_index=1):
         super(ACLossCompute, self).__init__(criterion, generator)
         self.lambda_coverage = lambda_coverage
@@ -413,6 +415,8 @@ class ACLossCompute(LossComputeBase):
         self.tgt_shift_index = tgt_shift_index
         self.model = model
         self.tgt_vocab = tgt_vocab
+        self.padding_idx = padding_idx
+        self.unk_idx = padding_idx
 
     def _compute_loss(self, batch, output, target, std_attn=None,
                       coverage_attn=None, align_head=None, ref_align=None):
@@ -420,7 +424,7 @@ class ACLossCompute(LossComputeBase):
         """
         Q_mod.shape: [gen_seq_len x batch_size x 1]
         Q_all.shape: [gen_seq_len x batch_size x tgt_vocab_size]
-        reward.shape: [gen_seq_len x batch_size x 1]
+        reward_tensor.shape: [gen_seq_len x batch_size x 1]
         """
 
         Q_mod, Q_all = self.model.critic_forward(target, output)
@@ -429,16 +433,45 @@ class ACLossCompute(LossComputeBase):
         scores = std_attn.log() # log(policy distribution)
         gtruth = target.view(-1)
 
-        # reward = torch.zeros(output.shape[0], output.shape[1])
+        reward_tensor = torch.zeros(output.shape[0], output.shape[1])
 
-        reward = bleu_add_1(output, target)
-        critic_loss = (Q_mod - (reward + (policy_dist * Q_all).sum(2))).sum(0).sum(1)
+        for col in range(0, output.shape[1]):
+            ref = ''
+            hyp = ''
+            reward_list = []
+
+            for ref_row in range(0, target.shape[0]):
+
+                tok_idx = int(output[ref_row, col])
+
+                if tok_idx == self.padding_idx:
+                    break
+                else:
+                    tok = self.tgt_vocab.itos[tok_idx]
+                    ref += tok
+
+            for hyp_row in range(0, output.shape[0]):
+                tok_idx = int(output[hyp_row, col])
+
+                if tok_idx == self.padding_idx:
+                    break
+                else:
+                    tok = self.tgt_vocab.itos[tok_idx]
+                    hyp += tok
+
+                    reward = bleu_add_1(hyp, ref)
+
+                    reward_list.append(reward)
+
+            reward_tensor[:hyp_row, col] = torch.tensor(reward_list)
+
+        critic_loss = (Q_mod - (reward_tensor + (policy_dist * Q_all).sum(2))).sum(0).sum(1)
 
         # loss = self.criterion(scores, gtruth)
 
         stats = self._stats(critic_loss.clone(), scores, gtruth)
 
-        return loss, stats
+        return critic_loss, stats
 
     def _add_coverage_shard_state(self, shard_state, attns):
         coverage = attns.get("coverage", None)
