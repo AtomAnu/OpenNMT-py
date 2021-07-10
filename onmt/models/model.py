@@ -202,7 +202,7 @@ class ACNMTModel(BaseModel):
         if not bptt:
             self.critic_decoder.init_state(tgt, memory_bank, enc_state)
 
-        dec_in = gen_seq
+        dec_in = gen_seq.to(torch.int64)
 
         print('gen_seq dtype: {}'.format(dec_in.dtype))
         dec_out, attns = self.critic_decoder(dec_in, memory_bank,
