@@ -179,7 +179,7 @@ class ACNMTModel(BaseModel):
     def compute_output_mask(self, gen_seq):
         # to be used when the decoder conditions on its own output
         eos_idx = gen_seq.eq(self.eos_token).to(torch.int64)
-        value_range = torch.arange(gen_seq.shape[0], 0, -1)
+        value_range = torch.arange(gen_seq.shape[0], 0, -1).to('cuda')
         output_multiplied = (eos_idx.transpose(0, 2) * value_range).transpose(0, 2)
         first_eos_idx = torch.argmax(output_multiplied, 0, keepdim=True).squeeze()
 
