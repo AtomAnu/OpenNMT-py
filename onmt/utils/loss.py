@@ -433,7 +433,7 @@ class ACLossCompute(LossComputeBase):
         scores = std_attn.log() # log(policy distribution)
         gtruth = target.view(-1)
 
-        reward_tensor = torch.zeros(output.shape[0], output.shape[1])
+        reward_tensor = torch.zeros(output.shape[0], output.shape[1]).to('cuda')
 
         for col in range(0, output.shape[1]):
             ref = ''
@@ -464,6 +464,11 @@ class ACLossCompute(LossComputeBase):
                     reward_list.append(reward)
 
             reward_tensor[:hyp_row, col] = torch.tensor(reward_list)
+
+        print('Q_mod: {}'.format(Q_mod.shape))
+        print('Reward: {}'.format(reward_tensor.shape))
+        print('policy_dist: {}'.format(policy_dist.shape))
+        print('Q_allß: {}'.format(Q_all.shape))
 
         critic_loss = (Q_mod - (reward_tensor + (policy_dist * Q_all).sum(2))).sum(0).sum(1)
 
