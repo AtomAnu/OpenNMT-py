@@ -122,7 +122,7 @@ class ACNMTModel(BaseModel):
         self.critic_encoder = critic_encoder
         self.critic_decoder = critic_decoder
         self.tgt_field = tgt_field
-        self.eos_token = tgt_field.base_field.eos_token
+        self.eos_token = tgt_field.base_field.vocab.stoi[tgt_field.base_field.eos_token]
 
         # # create a target critic
         # self.target_critic_encoder = copy.deepcopy(self.critic_encoder)
