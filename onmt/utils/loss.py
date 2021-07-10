@@ -472,7 +472,11 @@ class ACLossCompute(LossComputeBase):
         print('policy_dist: {}'.format(policy_dist.shape))
         print('Q_allß: {}'.format(Q_all.shape))
 
-        critic_loss = (Q_mod - (reward_tensor + (policy_dist * Q_all).sum(2))).sum(0).sum(1)
+        critic_loss = (policy_dist * Q_all).sum(2)
+
+        print(critic_loss.shape)
+
+        # critic_loss = (Q_mod - (reward_tensor + (policy_dist * Q_all).sum(2))).sum(0).sum(1)
 
         # loss = self.criterion(scores, gtruth)
 
