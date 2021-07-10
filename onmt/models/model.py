@@ -183,7 +183,7 @@ class ACNMTModel(BaseModel):
         output_multiplied = (eos_idx.transpose(0, 2) * value_range).transpose(0, 2)
         first_eos_idx = torch.argmax(output_multiplied, 0, keepdim=True).squeeze()
 
-        output_mask = torch.ones(gen_seq.shape[0], gen_seq.shape[1], gen_seq.shape[2])
+        output_mask = torch.ones(gen_seq.shape[0], gen_seq.shape[1], gen_seq.shape[2]).to('cuda')
 
         for row in range(0, gen_seq.shape[1]):
             output_mask[first_eos_idx[row] + 1:, row] = 0
