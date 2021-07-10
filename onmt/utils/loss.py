@@ -415,6 +415,7 @@ class ACLossCompute(LossComputeBase):
         self.tgt_shift_index = tgt_shift_index
         self.model = model
         self.tgt_vocab = tgt_vocab
+        print(padding_idx)
         self.padding_idx = padding_idx
         self.unk_idx = unk_idx
 
