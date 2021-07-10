@@ -416,7 +416,7 @@ class ACLossCompute(LossComputeBase):
         self.model = model
         self.tgt_vocab = tgt_vocab
         self.padding_idx = padding_idx
-        self.unk_idx = padding_idx
+        self.unk_idx = unk_idx
 
     def _compute_loss(self, batch, output, target, std_attn=None,
                       coverage_attn=None, align_head=None, ref_align=None):
