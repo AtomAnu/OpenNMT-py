@@ -151,7 +151,10 @@ class ACNMTModel(BaseModel):
             return dec_out, attns
         else:
             gen_seq = tgt[0].unsqueeze(0)
+            policy_dist = torch.zeros(1, tgt.shape[1], len(tgt_field.base_field.vocab)).to('cuda')
             gen_word = gen_seq
+
+            # TODO make gen_seq sequence length more flexible
             for step in range(0, tgt.shape[0]):
 
                 # TODO remove the print lines
@@ -166,13 +169,14 @@ class ACNMTModel(BaseModel):
                 gen_word = torch.argmax(scores, 2).unsqueeze(2)
                 gen_seq = torch.cat([gen_seq, gen_word], dim=0)
 
-                if step == 0:
-                    policy_dist = scores.exp()
-                else:
-                    policy_dist = torch.cat([policy_dist, scores.exp()], dim=0)
+                # if step == 0:
+                #     policy_dist = scores.exp()
+                # else:
+                policy_dist = torch.cat([policy_dist, scores.exp()], dim=0)
 
             output_mask = self.compute_output_mask(gen_seq)
             gen_seq = gen_seq * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
+            policy_dist = policy_dist * output_mask.to(torch.int64)
 
             # print('Generated sequence: {}'.format(gen_seq[:,0]))
 
