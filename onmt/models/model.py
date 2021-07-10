@@ -172,7 +172,7 @@ class ACNMTModel(BaseModel):
                     policy_dist = torch.cat([policy_dist, scores.exp()], dim=0)
 
             output_mask = self.compute_output_mask(gen_seq)
-            gen_seq = gen_seq * output_mask
+            gen_seq = gen_seq * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
 
             # print('Generated sequence: {}'.format(gen_seq[:,0]))
 
@@ -190,7 +190,7 @@ class ACNMTModel(BaseModel):
         for row in range(0, gen_seq.shape[1]):
             output_mask[first_eos_idx[row] + 1:, row] = 0
 
-        return output_mask
+        return output_mask.to(torch.bool)
 
 
     def critic_forward(self, tgt, gen_seq, lengths=None, bptt=False, with_align=False):
