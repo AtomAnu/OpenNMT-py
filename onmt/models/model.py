@@ -140,6 +140,8 @@ class ACNMTModel(BaseModel):
         if not bptt:
             self.decoder.init_state(src, memory_bank, enc_state)
 
+        print('src dtype: {}'.format(src.dtype))
+
         if self.train_mode == TrainMode.ACTOR:
             dec_in = tgt[:-1]  # exclude last target from inputs
             dec_out, attns = self.decoder(dec_in, memory_bank,
