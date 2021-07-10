@@ -140,7 +140,7 @@ class ACNMTModel(BaseModel):
         if not bptt:
             self.decoder.init_state(src, memory_bank, enc_state)
 
-        print('Tgt dtype: {}'.format(tgt.dtype))
+        print('Tgt: {}'.format(tgt[:,0]))
 
         if self.train_mode == TrainMode.ACTOR:
             dec_in = tgt[:-1]  # exclude last target from inputs
@@ -174,7 +174,7 @@ class ACNMTModel(BaseModel):
             output_mask = self.compute_output_mask(gen_seq)
             gen_seq = gen_seq * output_mask
 
-            print('Generated sequence: {}'.format(gen_seq[:,0]))
+            # print('Generated sequence: {}'.format(gen_seq[:,0]))
 
             return gen_seq, policy_dist
 
