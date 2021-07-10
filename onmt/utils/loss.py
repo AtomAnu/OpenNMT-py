@@ -470,7 +470,7 @@ class ACLossCompute(LossComputeBase):
         print('Q_mod: {}'.format(Q_mod.shape))
         print('Reward: {}'.format(reward_tensor.shape))
         print('policy_dist: {}'.format(policy_dist.shape))
-        print('Q_allß: {}'.format(Q_all.shape))
+        print('Q_all: {}'.format(Q_all.shape))
 
         # critic_loss = (policy_dist * Q_all).sum(2)
 
