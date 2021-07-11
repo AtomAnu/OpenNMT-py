@@ -476,6 +476,7 @@ class ACLossCompute(LossComputeBase):
 
                     reward_list.append(reward)
 
+            print('output shape: {}'.format(output.shape))
             print('hyp_row: {}'.format(hyp_row))
             print('reward_list len: {}'.format(len(reward_list)))
 
