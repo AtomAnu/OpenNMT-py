@@ -185,7 +185,7 @@ class ACNMTModel(BaseModel):
         value_range = torch.arange(gen_seq.shape[0], 0, -1).to('cuda')
         output_multiplied = (eos_idx.transpose(0, 2) * value_range).transpose(0, 2)
         first_eos_idx = torch.argmax(output_multiplied, 0, keepdim=True)
-        if len(first_eos_idx.shape) != 1: first_eos_idx = first_eos_idx.squeeze()
+        # if len(first_eos_idx.shape) != 1: first_eos_idx = first_eos_idx.squeeze()
 
         # TODO remove the print line
         print('Gen seq: {}'.format(gen_seq.shape))
