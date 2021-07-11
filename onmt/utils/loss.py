@@ -480,6 +480,8 @@ class ACLossCompute(LossComputeBase):
                     if hyp_row == output.shape[0]-1 and tok_idx == self.eos_idx:
                         hyp_row += 1
 
+            print(hyp)
+
             print('output shape: {}'.format(output.shape))
             print('hyp_row: {}'.format(hyp_row))
             print('reward_list len: {}'.format(len(reward_list)))
