@@ -193,6 +193,8 @@ class ACNMTModel(BaseModel):
 
         # TODO remove the print line
         print('Output mask: {}'.format(output_mask.shape))
+        print('first eos idx: {}'.format(first_eos_idx))
+        print('first eos idx shape: {}'.format(first_eos_idx.shape))
 
         for row in range(0, gen_seq.shape[1]):
             print(output_mask[first_eos_idx[row] + 1:, row])
