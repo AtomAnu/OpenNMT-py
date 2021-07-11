@@ -150,6 +150,7 @@ class ACNMTModel(BaseModel):
 
             return dec_out, attns
         else:
+            # TODO torch no grad for actor during critic pretraining
             gen_seq = tgt[0].unsqueeze(0)
             policy_dist = torch.zeros(1, tgt.shape[1], len(self.tgt_field.base_field.vocab)).to('cuda')
             gen_word = gen_seq

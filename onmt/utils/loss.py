@@ -434,7 +434,7 @@ class ACLossCompute(LossComputeBase):
         reward_tensor.shape: [gen_seq_len x batch_size x 1]
         """
 
-        print('target shape: {}'.format(target.shape))
+        print('target: {}'.format(target[:,0]))
 
         Q_mod, Q_all = self.model.critic_forward(target, output)
 
