@@ -561,6 +561,10 @@ class ACLossCompute(LossComputeBase):
     def _make_shard_state(self, batch, output, range_, attns=None):
         range_start = range_[0] + self.tgt_shift_index
         range_end = range_[1]
+
+        print('range start: {}'.format(range_start))
+        print('range end: {}'.format(range_end))
+
         shard_state = {
             "output": output,
             "target": batch.tgt[range_start:range_end, :, 0],
