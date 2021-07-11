@@ -65,11 +65,8 @@ class NMTModel(BaseModel):
     def forward(self, src, tgt, lengths, bptt=False, with_align=False):
         dec_in = tgt[:-1]  # exclude last target from inputs
 
-        # TODO to be removed
-        # print('dec_in: {}'.format(dec_in.shape))
         if self.max_len < dec_in.shape[0]:
             self.max_len = dec_in.shape[0]
-            print('New max length: {}'.format(self.max_len))
 
         enc_state, memory_bank, lengths = self.encoder(src, lengths)
 
@@ -156,16 +153,12 @@ class ACNMTModel(BaseModel):
                 if not bptt:
                     self.decoder.init_state(src, memory_bank, enc_state)
 
-                # TODO torch no grad for actor during critic pretraining
                 gen_seq = tgt[0].unsqueeze(0)
                 policy_dist = torch.zeros(1, tgt.shape[1], len(self.tgt_field.base_field.vocab)).to('cuda')
                 gen_word = gen_seq
 
                 # TODO make gen_seq sequence length more flexible
                 for step in range(0, tgt.shape[0]):
-
-                    # TODO remove the print lines
-                    # print(self.fields['tgt'].base_field.vocab.itos[int(gen_word[:,0])])
 
                     dec_out, attns = self.decoder(gen_word, memory_bank,
                                                   step=step,
@@ -176,18 +169,11 @@ class ACNMTModel(BaseModel):
                     gen_word = torch.argmax(scores, 2).unsqueeze(2)
                     gen_seq = torch.cat([gen_seq, gen_word], dim=0)
 
-                    # if step == 0:
-                    #     policy_dist = scores.exp()
-                    # else:
                     policy_dist = torch.cat([policy_dist, scores.exp()], dim=0)
-
-                print('Final Step: {}'.format(step))
 
                 output_mask = self.compute_output_mask(gen_seq)
                 gen_seq = gen_seq * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
                 policy_dist = policy_dist * output_mask.to(torch.int64)
-
-                # print('Generated sequence: {}'.format(gen_seq[:,0]))
 
             return gen_seq, policy_dist
 
@@ -216,8 +202,6 @@ class ACNMTModel(BaseModel):
             self.critic_decoder.init_state(tgt, memory_bank, enc_state)
 
         dec_in = gen_seq.to(torch.int64)
-
-        print('gen_seq dtype: {}'.format(dec_in.dtype))
         dec_out, attns = self.critic_decoder(dec_in, memory_bank,
                                              memory_lengths=lengths,
                                              with_align=with_align)

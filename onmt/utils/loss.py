@@ -219,13 +219,6 @@ class LossComputeBase(nn.Module):
         Returns:
             :obj:`onmt.utils.Statistics` : statistics for this batch.
         """
-
-        print('scores shape: {}'.format(scores.shape))
-        print('target shape: {}'.format(target.shape))
-        # print('pred shape: {}'.format(pred.shape))
-        # print('non padding: {}'.format(non_padding.shape))
-
-
         pred = scores.max(1)[1]
         non_padding = target.ne(self.padding_idx)
         num_correct = pred.eq(target).masked_select(non_padding).sum().item()
@@ -434,10 +427,6 @@ class ACLossCompute(LossComputeBase):
         Q_all.shape: [gen_seq_len x batch_size x tgt_vocab_size]
         reward_tensor.shape: [gen_seq_len x batch_size x 1]
         """
-
-        print('output: {}'.format(output[:,1]))
-        print('target: {}'.format(target[:,1]))
-
         Q_mod, Q_all = self.model.critic_forward(target, output)
 
         policy_dist = std_attn
@@ -462,11 +451,8 @@ class ACLossCompute(LossComputeBase):
                     tok = self.tgt_vocab.itos[tok_idx]
                     ref += tok + ' '
 
-            print('Ref: {}'.format(ref))
-
             for hyp_row in range(0, output.shape[0]):
 
-                print('Col Output: {}'.format(output[hyp_row, col]))
                 tok_idx = int(output[hyp_row, col])
 
                 if tok_idx == self.padding_idx:
@@ -482,31 +468,11 @@ class ACLossCompute(LossComputeBase):
                     if hyp_row == output.shape[0]-1:
                         hyp_row += 1
 
-            print('Hyp: {}'.format(hyp))
-
-            print('output shape: {}'.format(output.shape))
-            print('hyp_row: {}'.format(hyp_row))
-            print('reward_list len: {}'.format(len(reward_list)))
-
             reward_tensor[:hyp_row, col] = torch.tensor(reward_list)
 
         reward_tensor = reward_tensor.unsqueeze(2)
 
-        print('Q_mod: {}'.format(Q_mod.shape))
-        print('Reward: {}'.format(reward_tensor.shape))
-        print('policy_dist: {}'.format(policy_dist.shape))
-        print('Q_all: {}'.format(Q_all.shape))
-
-        # critic_loss = (policy_dist * Q_all).sum(2)
-
-        # print(critic_loss.shape)
-
         critic_loss = (Q_mod - (reward_tensor + (policy_dist * Q_all).sum(2).unsqueeze(2))).sum((0,1))
-
-        print('Critic Loss: {}'.format(critic_loss))
-        print('Critic Loss shape: {}'.format(critic_loss.shape))
-
-        # loss = self.criterion(scores, gtruth)
 
         stats = self._stats(critic_loss.clone(), scores, gtruth)
 
@@ -576,11 +542,6 @@ class ACLossCompute(LossComputeBase):
     def _make_shard_state(self, batch, output, range_, attns=None):
         range_start = range_[0] + self.tgt_shift_index
         range_end = range_[1]
-
-        print('range start: {}'.format(range_start))
-        print('range end: {}'.format(range_end))
-        print('batch tgt shape: {}'.format(batch.tgt.shape))
-        print('attns shape: {}'.format(attns.shape))
 
         shard_state = {
             "output": output[range_start:range_end, :],
