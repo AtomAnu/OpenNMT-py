@@ -565,9 +565,10 @@ class ACLossCompute(LossComputeBase):
         print('range start: {}'.format(range_start))
         print('range end: {}'.format(range_end))
         print('batch tgt shape: {}'.format(batch.tgt.shape))
+        print('attns shape: {}'.format(attns.shape))
 
         shard_state = {
-            "output": output,
+            "output": output[range_start:range_end, :, 0],
             "target": batch.tgt[range_start:range_end, :, 0],
             "std_attn": attns,
         }
