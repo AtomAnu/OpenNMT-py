@@ -479,7 +479,7 @@ class ACLossCompute(LossComputeBase):
 
                     reward_list.append(reward)
 
-                    if hyp_row == output.shape[0]-1 and tok_idx == self.eos_idx:
+                    if hyp_row == output.shape[0]-1:
                         hyp_row += 1
 
             print('Hyp: {}'.format(hyp))
