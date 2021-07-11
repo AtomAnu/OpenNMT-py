@@ -441,6 +441,7 @@ class ACLossCompute(LossComputeBase):
 
         policy_dist = std_attn
         scores = std_attn.log() # log(policy distribution)
+        scores = self._bottle(scores)
         gtruth = target.view(-1)
 
         reward_tensor = torch.zeros(output.shape[0], output.shape[1]).to('cuda')
