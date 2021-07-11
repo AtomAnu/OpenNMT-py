@@ -460,7 +460,7 @@ class ACLossCompute(LossComputeBase):
                     break
                 else:
                     tok = self.tgt_vocab.itos[tok_idx]
-                    ref += tok
+                    ref += tok + ' '
 
             for hyp_row in range(0, output.shape[0]):
 
@@ -471,7 +471,7 @@ class ACLossCompute(LossComputeBase):
                     break
                 else:
                     tok = self.tgt_vocab.itos[tok_idx]
-                    hyp += tok
+                    hyp += tok + ' '
 
                     reward = bleu_add_1(hyp, ref)
 
