@@ -25,6 +25,7 @@ def build_loss_compute(model, tgt_field, opt, train=True):
     device = torch.device("cuda" if onmt.utils.misc.use_gpu(opt) else "cpu")
 
     padding_idx = tgt_field.vocab.stoi[tgt_field.pad_token]
+    eos_idx = tgt_field.vocab.stoi[tgt_field.eos_token]
     unk_idx = tgt_field.vocab.stoi[tgt_field.unk_token]
 
     if opt.lambda_coverage != 0:
@@ -92,7 +93,7 @@ def build_loss_compute(model, tgt_field, opt, train=True):
                 loss_gen,
                 model,
                 tgt_field.vocab,
-                padding_idx,
+                eos_idx,
                 unk_idx
             )
         else:
@@ -414,7 +415,7 @@ class ACLossCompute(LossComputeBase):
 
     Implement loss compatible with coverage and alignement shards
     """
-    def __init__(self, criterion, generator, model, tgt_vocab, padding_idx, unk_idx, normalization="sents",
+    def __init__(self, criterion, generator, model, tgt_vocab, eos_idx, unk_idx, normalization="sents",
                  lambda_coverage=0.0, lambda_align=0.0, tgt_shift_index=1):
         super(ACLossCompute, self).__init__(criterion, generator)
         self.lambda_coverage = lambda_coverage
@@ -422,7 +423,7 @@ class ACLossCompute(LossComputeBase):
         self.tgt_shift_index = tgt_shift_index
         self.model = model
         self.tgt_vocab = tgt_vocab
-        # self.padding_idx = 1
+        self.eos_idx = eos_idx
         self.unk_idx = unk_idx
 
     def _compute_loss(self, batch, output, target, std_attn=None,
@@ -475,6 +476,9 @@ class ACLossCompute(LossComputeBase):
                     reward = bleu_add_1(hyp, ref)
 
                     reward_list.append(reward)
+
+                    if hyp_row == output.shape[0]-1 and tok_idx == self.eos_idx:
+                        hyp_row += 1
 
             print('output shape: {}'.format(output.shape))
             print('hyp_row: {}'.format(hyp_row))
