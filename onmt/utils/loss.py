@@ -462,6 +462,8 @@ class ACLossCompute(LossComputeBase):
                     tok = self.tgt_vocab.itos[tok_idx]
                     ref += tok + ' '
 
+            print('Ref: {}'.format(ref))
+
             for hyp_row in range(0, output.shape[0]):
 
                 print('Col Output: {}'.format(output[hyp_row, col]))
@@ -480,7 +482,7 @@ class ACLossCompute(LossComputeBase):
                     if hyp_row == output.shape[0]-1 and tok_idx == self.eos_idx:
                         hyp_row += 1
 
-            print(hyp)
+            print('Hyp: {}'.format(hyp))
 
             print('output shape: {}'.format(output.shape))
             print('hyp_row: {}'.format(hyp_row))
