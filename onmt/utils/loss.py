@@ -570,7 +570,7 @@ class ACLossCompute(LossComputeBase):
         shard_state = {
             "output": output[range_start:range_end, :, 0],
             "target": batch.tgt[range_start:range_end, :, 0],
-            "std_attn": attns,
+            "std_attn": attns[range_start:range_end, :, :],
         }
         if self.lambda_coverage != 0.0:
             self._add_coverage_shard_state(shard_state, attns)
