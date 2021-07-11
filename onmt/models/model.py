@@ -160,6 +160,8 @@ class ACNMTModel(BaseModel):
                 # TODO make gen_seq sequence length more flexible
                 for step in range(0, tgt.shape[0]):
 
+                    print('tgt shape 0: {}'.format(tgt.shape[0]))
+
                     dec_out, attns = self.decoder(gen_word, memory_bank,
                                                   step=step,
                                                   memory_lengths=lengths,
@@ -183,6 +185,9 @@ class ACNMTModel(BaseModel):
         value_range = torch.arange(gen_seq.shape[0], 0, -1).to('cuda')
         output_multiplied = (eos_idx.transpose(0, 2) * value_range).transpose(0, 2)
         first_eos_idx = torch.argmax(output_multiplied, 0, keepdim=True).squeeze()
+
+        # TODO remove the print line
+        print('Gen seq: {}'.format(gen_seq.shape))
 
         output_mask = torch.ones(gen_seq.shape[0], gen_seq.shape[1], gen_seq.shape[2]).to('cuda')
 
