@@ -135,53 +135,59 @@ class ACNMTModel(BaseModel):
 
     def forward(self, src, tgt, lengths, bptt=False, with_align=False):
 
-        enc_state, memory_bank, lengths = self.encoder(src, lengths)
-
-        if not bptt:
-            self.decoder.init_state(src, memory_bank, enc_state)
-
-        print('Tgt: {}'.format(tgt[:,0]))
-
         if self.train_mode == TrainMode.ACTOR:
+            enc_state, memory_bank, lengths = self.encoder(src, lengths)
+
+            if not bptt:
+                self.decoder.init_state(src, memory_bank, enc_state)
+
             dec_in = tgt[:-1]  # exclude last target from inputs
             dec_out, attns = self.decoder(dec_in, memory_bank,
                                           memory_lengths=lengths,
                                           with_align=with_align)
 
             return dec_out, attns
-        else:
-            # TODO torch no grad for actor during critic pretraining
-            gen_seq = tgt[0].unsqueeze(0)
-            policy_dist = torch.zeros(1, tgt.shape[1], len(self.tgt_field.base_field.vocab)).to('cuda')
-            gen_word = gen_seq
+        elif self.train_mode == TrainMode.CRITIC:
 
-            # TODO make gen_seq sequence length more flexible
-            for step in range(0, tgt.shape[0]):
+            with torch.no_grad():
 
-                # TODO remove the print lines
-                # print(self.fields['tgt'].base_field.vocab.itos[int(gen_word[:,0])])
+                enc_state, memory_bank, lengths = self.encoder(src, lengths)
 
-                dec_out, attns = self.decoder(gen_word, memory_bank,
-                                              step=step,
-                                              memory_lengths=lengths,
-                                              with_align=with_align)
+                if not bptt:
+                    self.decoder.init_state(src, memory_bank, enc_state)
 
-                scores = self.generator(dec_out)
-                gen_word = torch.argmax(scores, 2).unsqueeze(2)
-                gen_seq = torch.cat([gen_seq, gen_word], dim=0)
+                # TODO torch no grad for actor during critic pretraining
+                gen_seq = tgt[0].unsqueeze(0)
+                policy_dist = torch.zeros(1, tgt.shape[1], len(self.tgt_field.base_field.vocab)).to('cuda')
+                gen_word = gen_seq
 
-                # if step == 0:
-                #     policy_dist = scores.exp()
-                # else:
-                policy_dist = torch.cat([policy_dist, scores.exp()], dim=0)
+                # TODO make gen_seq sequence length more flexible
+                for step in range(0, tgt.shape[0]):
 
-            print('Final Step: {}'.format(step))
+                    # TODO remove the print lines
+                    # print(self.fields['tgt'].base_field.vocab.itos[int(gen_word[:,0])])
 
-            output_mask = self.compute_output_mask(gen_seq)
-            gen_seq = gen_seq * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
-            policy_dist = policy_dist * output_mask.to(torch.int64)
+                    dec_out, attns = self.decoder(gen_word, memory_bank,
+                                                  step=step,
+                                                  memory_lengths=lengths,
+                                                  with_align=with_align)
 
-            # print('Generated sequence: {}'.format(gen_seq[:,0]))
+                    scores = self.generator(dec_out)
+                    gen_word = torch.argmax(scores, 2).unsqueeze(2)
+                    gen_seq = torch.cat([gen_seq, gen_word], dim=0)
+
+                    # if step == 0:
+                    #     policy_dist = scores.exp()
+                    # else:
+                    policy_dist = torch.cat([policy_dist, scores.exp()], dim=0)
+
+                print('Final Step: {}'.format(step))
+
+                output_mask = self.compute_output_mask(gen_seq)
+                gen_seq = gen_seq * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
+                policy_dist = policy_dist * output_mask.to(torch.int64)
+
+                # print('Generated sequence: {}'.format(gen_seq[:,0]))
 
             return gen_seq, policy_dist
 
