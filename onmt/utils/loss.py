@@ -218,6 +218,13 @@ class LossComputeBase(nn.Module):
         Returns:
             :obj:`onmt.utils.Statistics` : statistics for this batch.
         """
+
+        print('scores shape: {}'.format(scores.shape))
+        print('target shape: {}'.format(target.shape))
+        print('pred shape: {}'.format(pred.shape))
+        print('non padding: {}'.format(non_padding.shape))
+
+
         pred = scores.max(1)[1]
         non_padding = target.ne(self.padding_idx)
         num_correct = pred.eq(target).masked_select(non_padding).sum().item()
