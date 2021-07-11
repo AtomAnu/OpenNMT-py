@@ -568,7 +568,7 @@ class ACLossCompute(LossComputeBase):
         print('attns shape: {}'.format(attns.shape))
 
         shard_state = {
-            "output": output[range_start:range_end, :, 0],
+            "output": output[range_start:range_end, :],
             "target": batch.tgt[range_start:range_end, :, 0],
             "std_attn": attns[range_start:range_end, :, :],
         }
