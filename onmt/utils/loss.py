@@ -464,7 +464,7 @@ class ACLossCompute(LossComputeBase):
 
             for hyp_row in range(0, output.shape[0]):
 
-                print(output[hyp_row, col])
+                print('Col Output: {}'.format(output[hyp_row, col]))
                 tok_idx = int(output[hyp_row, col])
 
                 if tok_idx == self.padding_idx:
