@@ -67,6 +67,7 @@ def main(opt, fields, transforms_cls, checkpoint, device_id,
     model = build_model(model_opt, opt, fields, checkpoint)
     model.count_parameters(log=logger.info)
 
+    # TODO create optims for actor and critic
     # Build optimizer.
     optim = Optimizer.from_opt(model, opt, checkpoint=checkpoint)
 
