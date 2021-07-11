@@ -221,8 +221,8 @@ class LossComputeBase(nn.Module):
 
         print('scores shape: {}'.format(scores.shape))
         print('target shape: {}'.format(target.shape))
-        print('pred shape: {}'.format(pred.shape))
-        print('non padding: {}'.format(non_padding.shape))
+        # print('pred shape: {}'.format(pred.shape))
+        # print('non padding: {}'.format(non_padding.shape))
 
 
         pred = scores.max(1)[1]
@@ -433,6 +433,8 @@ class ACLossCompute(LossComputeBase):
         Q_all.shape: [gen_seq_len x batch_size x tgt_vocab_size]
         reward_tensor.shape: [gen_seq_len x batch_size x 1]
         """
+
+        print('target shape: {}'.format(target.shape))
 
         Q_mod, Q_all = self.model.critic_forward(target, output)
 
