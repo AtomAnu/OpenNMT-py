@@ -568,11 +568,17 @@ class ACLossCompute(LossComputeBase):
         range_start = range_[0] + self.tgt_shift_index
         range_end = range_[1]
 
-        shard_state = {
-            "output": output[range_start:range_end, :],
-            "target": batch.tgt[range_start:range_end, :, 0],
-            "std_attn": attns[range_start:range_end, :, :],
-        }
+        if self.model.train_mode == TrainMode.ACTOR:
+            shard_state = {
+                "output": output,
+                "target": batch.tgt[range_start:range_end, :, 0],
+            }
+        else:
+            shard_state = {
+                "output": output[range_start:range_end, :],
+                "target": batch.tgt[range_start:range_end, :, 0],
+                "std_attn": attns[range_start:range_end, :, :],
+            }
         if self.lambda_coverage != 0.0:
             self._add_coverage_shard_state(shard_state, attns)
         if self.lambda_align != 0.0:
