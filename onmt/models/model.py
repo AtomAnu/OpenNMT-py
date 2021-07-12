@@ -203,7 +203,7 @@ class Actor(nn.Module):
 
 class CriticQ(nn.Module):
 
-    def __int__(self, encoder, decoder, output_layer):
+    def __init__(self, encoder, decoder, output_layer):
         super(CriticQ, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
@@ -259,7 +259,7 @@ class CriticQ(nn.Module):
 
 class CriticV(nn.Module):
 
-    def __int__(self, encoder, decoder, output_layer):
+    def __init__(self, encoder, decoder, output_layer):
 
         self.encoder = encoder
         self.decoder = decoder
