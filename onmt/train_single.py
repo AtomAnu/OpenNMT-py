@@ -71,7 +71,7 @@ def main(opt, fields, transforms_cls, checkpoint, device_id,
     model.count_parameters(log=logger.info)
 
     # Build optimizer.
-    if self.model_opt.model_task != ModelTask.AC and self.model_opt.model_task != ModelTask.A2C:
+    if model_opt.model_task != ModelTask.AC and model_opt.model_task != ModelTask.A2C:
         optim = Optimizer.from_opt(model, opt, checkpoint=checkpoint)
     elif opt.train_from and checkpoint is not None:
         actor_optim = Optimizer.from_opt(model.actor, opt, checkpoint=checkpoint, ac_optim_opt='actor')
