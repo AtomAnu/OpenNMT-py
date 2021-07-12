@@ -202,13 +202,15 @@ class LossComputeBase(nn.Module):
         if shard_size == 0:
             loss, stats = self._compute_loss(batch, **shard_state)
 
-            if loss[0] is not None:
-                loss[0] = loss[0] / float(normalization)
+            actor_loss, critic_loss = loss
 
-            if loss[1] is not None:
-                loss[1] = loss[1] / float(normalization)
+            if actor_loss is not None:
+                actor_loss = actor_loss / float(normalization)
 
-            return loss, stats
+            if critic_loss is not None:
+                critic_loss = critic_loss / float(normalization)
+
+            return (actor_loss, critic_loss), stats
         batch_stats = onmt.utils.Statistics()
         for shard in shards(shard_state, shard_size):
             loss, stats = self._compute_loss(batch, **shard)
