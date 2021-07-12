@@ -12,6 +12,7 @@ from onmt.utils.logging import init_logger, logger
 from onmt.utils.parse import ArgumentParser
 
 from onmt.inputters.dynamic_iterator import build_dynamic_dataset_iter
+from onmt.constants import ModelTask
 
 
 def configure_process(opt, device_id):
@@ -33,6 +34,8 @@ def _get_model_opts(opt, checkpoint=None):
             opt.tensorboard_log_dir_dated = model_opt.tensorboard_log_dir_dated
         # Override checkpoint's update_embeddings as it defaults to false
         model_opt.update_vocab = opt.update_vocab
+        # Override train mode during the current configuration
+        model_opt.train_mode = opt.train_mode
     else:
         model_opt = opt
     return model_opt
@@ -67,9 +70,17 @@ def main(opt, fields, transforms_cls, checkpoint, device_id,
     model = build_model(model_opt, opt, fields, checkpoint)
     model.count_parameters(log=logger.info)
 
-    # TODO create optims for actor and critic
     # Build optimizer.
-    optim = Optimizer.from_opt(model, opt, checkpoint=checkpoint)
+    if self.model_opt.model_task != ModelTask.AC and self.model_opt.model_task != ModelTask.A2C:
+        optim = Optimizer.from_opt(model, opt, checkpoint=checkpoint)
+    elif opt.train_from and checkpoint is not None:
+        actor_optim = Optimizer.from_opt(model.actor, opt, checkpoint=checkpoint, ac_optim_opt='actor')
+        critic_optim = Optimizer.from_opt(model.critic, opt, checkpoint=checkpoint, ac_optim_opt='critic')
+        optim = (actor_optim, critic_optim)
+    else:
+        actor_optim = Optimizer.from_opt(model.actor, opt, checkpoint=checkpoint)
+        critic_optim = Optimizer.from_opt(model.critic, opt, checkpoint=checkpoint)
+        optim = (actor_optim, critic_optim)
 
     # Build model saver
     model_saver = build_model_saver(model_opt, opt, model, fields, optim)

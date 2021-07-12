@@ -427,56 +427,81 @@ class ACLossCompute(LossComputeBase):
         Q_all.shape: [gen_seq_len x batch_size x tgt_vocab_size]
         reward_tensor.shape: [gen_seq_len x batch_size x 1]
         """
-        Q_mod, Q_all = self.model.critic_forward(target, output)
+        if self.model.train_mode == TrainMode.ACTOR:
+            bottled_output = self._bottle(output)
 
-        policy_dist = std_attn
-        scores = std_attn.log() # log(policy distribution)
-        scores = self._bottle(scores)
-        gtruth = target.view(-1)
+            scores = self.generator(bottled_output)
+            gtruth = target.view(-1)
 
-        reward_tensor = torch.zeros(output.shape[0], output.shape[1]).to('cuda')
+            loss = self.criterion(scores, gtruth)
+            if self.lambda_coverage != 0.0:
+                coverage_loss = self._compute_coverage_loss(
+                    std_attn=std_attn, coverage_attn=coverage_attn)
+                loss += coverage_loss
+            if self.lambda_align != 0.0:
+                if align_head.dtype != loss.dtype:  # Fix FP16
+                    align_head = align_head.to(loss.dtype)
+                if ref_align.dtype != loss.dtype:
+                    ref_align = ref_align.to(loss.dtype)
+                align_loss = self._compute_alignement_loss(
+                    align_head=align_head, ref_align=ref_align)
+                loss += align_loss
+            stats = self._stats(loss.clone(), scores, gtruth)
 
-        for col in range(0, output.shape[1]):
-            ref = ''
-            hyp = ''
-            reward_list = []
+            return (loss, None), stats
 
-            for ref_row in range(0, target.shape[0]):
+        elif self.model.train_mode == TrainMode.CRITIC:
 
-                tok_idx = int(output[ref_row, col])
+            Q_mod, Q_all = self.model.critic(target, output)
 
-                if tok_idx == self.padding_idx:
-                    break
-                else:
-                    tok = self.tgt_vocab.itos[tok_idx]
-                    ref += tok + ' '
+            policy_dist = std_attn
+            scores = std_attn.log() # log(policy distribution)
+            scores = self._bottle(scores)
+            gtruth = target.view(-1)
 
-            for hyp_row in range(0, output.shape[0]):
+            reward_tensor = torch.zeros(output.shape[0], output.shape[1]).to('cuda')
 
-                tok_idx = int(output[hyp_row, col])
+            for col in range(0, output.shape[1]):
+                ref = ''
+                hyp = ''
+                reward_list = []
 
-                if tok_idx == self.padding_idx:
-                    break
-                else:
-                    tok = self.tgt_vocab.itos[tok_idx]
-                    hyp += tok + ' '
+                for ref_row in range(0, target.shape[0]):
 
-                    reward = bleu_add_1(hyp, ref)
+                    tok_idx = int(output[ref_row, col])
 
-                    reward_list.append(reward)
+                    if tok_idx == self.padding_idx:
+                        break
+                    else:
+                        tok = self.tgt_vocab.itos[tok_idx]
+                        ref += tok + ' '
 
-                    if hyp_row == output.shape[0]-1:
-                        hyp_row += 1
+                for hyp_row in range(0, output.shape[0]):
 
-            reward_tensor[:hyp_row, col] = torch.tensor(reward_list)
+                    tok_idx = int(output[hyp_row, col])
 
-        reward_tensor = reward_tensor.unsqueeze(2)
+                    if tok_idx == self.padding_idx:
+                        break
+                    else:
+                        tok = self.tgt_vocab.itos[tok_idx]
+                        hyp += tok + ' '
 
-        critic_loss = (Q_mod - (reward_tensor + (policy_dist * Q_all).sum(2).unsqueeze(2))).sum((0,1))
+                        reward = bleu_add_1(hyp, ref)
 
-        stats = self._stats(critic_loss.clone(), scores, gtruth)
+                        reward_list.append(reward)
 
-        return critic_loss, stats
+                        if hyp_row == output.shape[0]-1:
+                            hyp_row += 1
+
+                reward_tensor[:hyp_row, col] = torch.tensor(reward_list)
+
+            reward_tensor = reward_tensor.unsqueeze(2)
+
+            critic_loss = ((Q_mod - (reward_tensor + (policy_dist * Q_all).sum(2).unsqueeze(2)))**2).sum((0,1))
+
+            stats = self._stats(critic_loss.clone(), scores, gtruth)
+
+            return (None, critic_loss), stats
 
     def _add_coverage_shard_state(self, shard_state, attns):
         coverage = attns.get("coverage", None)

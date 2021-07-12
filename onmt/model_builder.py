@@ -176,6 +176,37 @@ def build_task_specific_model(model_opt, fields):
             share_embeddings=model_opt.share_embeddings,
             src_emb=src_emb,
         )
+
+        actor = onmt.models.Actor(actor_encoder, actor_decoder)
+
+        critic_encoder, tgt_emb = build_encoder_with_embeddings(model_opt, fields, for_critic=True)
+        critic_decoder, _ = build_decoder_with_embeddings(
+            model_opt,
+            fields,
+            share_embeddings=model_opt.share_embeddings,
+            src_emb=tgt_emb,
+        )
+        critic_output_layer = nn.Sequential(
+        nn.Linear(model_opt.dec_rnn_size,
+                  len(fields["tgt"].base_field.vocab)),
+                  Cast(torch.float32))
+
+        critic = onmt.models.CriticQ(critic_encoder, critic_decoder, critic_output_layer)
+
+        return onmt.models.ACNMTModel(actor=actor, critic=critic,
+                                      train_mode=model_opt.train_mode, tgt_field=fields["tgt"])
+    elif model_opt.model_task == ModelTask.A2C:
+        logger.info('Building the A2C NMT model...')
+        actor_encoder, src_emb = build_encoder_with_embeddings(model_opt, fields)
+        actor_decoder, _ = build_decoder_with_embeddings(
+            model_opt,
+            fields,
+            share_embeddings=model_opt.share_embeddings,
+            src_emb=src_emb,
+        )
+
+        actor = onmt.models.Actor(actor_encoder, actor_decoder)
+
         critic_encoder, tgt_emb = build_encoder_with_embeddings(model_opt, fields, for_critic=True)
         critic_decoder, _ = build_decoder_with_embeddings(
             model_opt,
@@ -184,11 +215,15 @@ def build_task_specific_model(model_opt, fields):
             src_emb=tgt_emb,
         )
 
-        # TODO remove train_mode hot fix
+        # TODO change critic output layer for A2C
+        critic_output_layer = nn.Sequential(
+            nn.Linear(model_opt.dec_rnn_size, 1),
+            Cast(torch.float32))
 
-        return onmt.models.ACNMTModel(actor_encoder=actor_encoder, actor_decoder=actor_decoder,
-                                      critic_encoder=critic_encoder, critic_decoder=critic_decoder,
-                                      train_mode='critic', tgt_field=fields["tgt"])
+        critic = onmt.models.CriticV(critic_encoder, critic_decoder, critic_output_layer)
+
+        return onmt.models.A2CNMTModel(actor=actor, critic=critic,
+                                       train_mode=model_opt.train_mode, tgt_field=fields["tgt"])
     else:
         raise ValueError(f"No model defined for {model_opt.model_task} task")
 
@@ -280,12 +315,6 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
         if model_opt.share_decoder_embeddings:
             generator[0].weight = model.decoder.embeddings.word_lut.weight
 
-        if model_opt.model_task == ModelTask.AC:
-            critic_output_layer = nn.Sequential(
-            nn.Linear(model_opt.dec_rnn_size,
-                      len(fields["tgt"].base_field.vocab)),
-            Cast(torch.float32))
-            model.critic_output_layer = critic_output_layer
     else:
         tgt_base_field = fields["tgt"].base_field
         vocab_size = len(tgt_base_field.vocab)
@@ -339,7 +368,10 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
         model.load_state_dict(checkpoint['model'], strict=False)
         generator.load_state_dict(checkpoint['generator'], strict=False)
 
-    model.generator = generator
+    if model_opt.model_task != ModelTask.AC and model_opt.model_task != ModelTask.A2C:
+        model.generator = generator
+    else:
+        model.actor.generator = generator
     model.to(device)
     if model_opt.model_dtype == 'fp16' and model_opt.optim == 'fusedadam':
         model.half()

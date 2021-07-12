@@ -5,6 +5,7 @@ from collections import deque
 from onmt.utils.logging import logger
 
 from copy import deepcopy
+from onmt.constants import ModelTask
 
 
 def build_model_saver(model_opt, opt, model, fields, optim):
@@ -132,13 +133,23 @@ class ModelSaver(ModelSaverBase):
                 for key in keys_to_pop:
                     vocab[side].fields[0][1].vocab.stoi.pop(key, None)
 
-        checkpoint = {
-            'model': model_state_dict,
-            'generator': generator_state_dict,
-            'vocab': vocab,
-            'opt': self.model_opt,
-            'optim': self.optim.state_dict(),
-        }
+        if self.model_opt.model_task != ModelTask.AC and self.model_opt.model_task != ModelTask.A2C:
+            checkpoint = {
+                'model': model_state_dict,
+                'generator': generator_state_dict,
+                'vocab': vocab,
+                'opt': self.model_opt,
+                'optim': self.optim.state_dict(),
+            }
+        else:
+            checkpoint = {
+                'model': model_state_dict,
+                'generator': generator_state_dict,
+                'vocab': vocab,
+                'opt': self.model_opt,
+                'actor_optim': self.optim[0].state_dict(),
+                'critic_optim': self.optim[1].state_dict(),
+            }
 
         logger.info("Saving checkpoint %s_step_%d.pt" % (self.base_path, step))
         checkpoint_path = '%s_step_%d.pt' % (self.base_path, step)

@@ -103,36 +103,17 @@ class NMTModel(BaseModel):
             log('* number of parameters: {}'.format(enc + dec))
         return enc, dec
 
-class ACNMTModel(BaseModel):
-    """
-    Core trainable object in OpenNMT. Implements a trainable interface
-    for a simple, generic encoder + decoder model.
-    Args:
-      encoder (onmt.encoders.EncoderBase): an encoder object
-      decoder (onmt.decoders.DecoderBase): a decoder object
-    """
+class Actor(nn.Module):
 
-    def __init__(self, actor_encoder, actor_decoder, critic_encoder, critic_decoder, train_mode, tgt_field):
-        super(ACNMTModel, self).__init__(actor_encoder, actor_decoder)
-        self.encoder = actor_encoder
-        self.decoder = actor_decoder
-        self.critic_encoder = critic_encoder
-        self.critic_decoder = critic_decoder
-        self.tgt_field = tgt_field
-        self.eos_token = tgt_field.base_field.vocab.stoi[tgt_field.base_field.eos_token]
+    def __init__(self, encoder, decoder):
+        super(Actor, self).__init__()
 
-        # # create a target critic
-        # self.target_critic_encoder = copy.deepcopy(self.critic_encoder)
-        # self.target_critic_decoder = copy.deepcopy(self.critic_decoder)
+        self.encoder = encoder
+        self.decoder = decoder
 
-        self.train_mode = train_mode
+    def forward(self, src, tgt, lengths, bptt=False, with_align=False, train_mode=TrainMode.ACTOR):
 
-        # TODO remove the print line
-        print('Train Mode: {}'.format(self.train_mode))
-
-    def forward(self, src, tgt, lengths, bptt=False, with_align=False):
-
-        if self.train_mode == TrainMode.ACTOR:
+        if train_mode == TrainMode.ACTOR:
             enc_state, memory_bank, lengths = self.encoder(src, lengths)
 
             if not bptt:
@@ -144,7 +125,7 @@ class ACNMTModel(BaseModel):
                                           with_align=with_align)
 
             return dec_out, attns
-        elif self.train_mode == TrainMode.CRITIC:
+        elif train_mode == TrainMode.CRITIC:
 
             with torch.no_grad():
 
@@ -185,20 +166,8 @@ class ACNMTModel(BaseModel):
         value_range = torch.arange(gen_seq.shape[0], 0, -1).to('cuda')
         output_multiplied = (eos_idx.transpose(0, 2) * value_range).transpose(0, 2)
         first_eos_idx = torch.argmax(output_multiplied, 0, keepdim=True).view(-1)
-        # if len(first_eos_idx.squeeze().shape) != 0:
-        #     first_eos_idx = first_eos_idx.squeeze()
-        # else:
-        #     first_eos_idx = first_eos_idx.squeeze()
-
-        # TODO remove the print line
-        print('Gen seq: {}'.format(gen_seq.shape))
 
         output_mask = torch.ones(gen_seq.shape[0], gen_seq.shape[1], gen_seq.shape[2]).to('cuda')
-
-        # TODO remove the print line
-        print('Output mask: {}'.format(output_mask.shape))
-        print('first eos idx: {}'.format(first_eos_idx))
-        print('first eos idx shape: {}'.format(first_eos_idx.shape))
 
         for row in range(0, gen_seq.shape[1]):
             print(output_mask[first_eos_idx[row] + 1:, row])
@@ -206,32 +175,8 @@ class ACNMTModel(BaseModel):
 
         return output_mask.to(torch.bool)
 
-
-    def critic_forward(self, tgt, gen_seq, lengths=None, bptt=False, with_align=False):
-
-        lengths = torch.tensor([tgt.shape[0]]).repeat(tgt.shape[1]).to('cuda')
-
-        enc_state, memory_bank, lengths = self.critic_encoder(tgt.unsqueeze(2), lengths)
-
-        if not bptt:
-            self.critic_decoder.init_state(tgt, memory_bank, enc_state)
-
-        dec_in = gen_seq.to(torch.int64)
-        dec_out, attns = self.critic_decoder(dec_in, memory_bank,
-                                             memory_lengths=lengths,
-                                             with_align=with_align)
-
-        Q_all = self.critic_output_layer(dec_out)
-
-        Q_mod = Q_all.gather(2, gen_seq.to(torch.int64))
-
-        return Q_mod, Q_all
-
-    # def target_critic_forward(self, ):
-    #
-    #     pass
-
     def update_dropout(self, dropout):
+
         self.encoder.update_dropout(dropout)
         self.decoder.update_dropout(dropout)
 
@@ -251,10 +196,221 @@ class ACNMTModel(BaseModel):
             else:
                 dec += param.nelement()
         if callable(log):
-            log('encoder: {}'.format(enc))
-            log('decoder: {}'.format(dec))
-            log('* number of parameters: {}'.format(enc + dec))
+            log('actor encoder: {}'.format(enc))
+            log('actor decoder: {}'.format(dec))
+
         return enc, dec
+
+class CriticQ(nn.Module):
+
+    def __int__(self, encoder, decoder, output_layer):
+
+        self.encoder = encoder
+        self.decoder = decoder
+        self.output_layer = output_layer
+
+    def forward(self, tgt, gen_seq, lengths=None, bptt=False, with_align=False):
+
+        lengths = torch.tensor([tgt.shape[0]]).repeat(tgt.shape[1]).to('cuda')
+
+        enc_state, memory_bank, lengths = self.critic_encoder(tgt.unsqueeze(2), lengths)
+
+        if not bptt:
+            self.critic_decoder.init_state(tgt, memory_bank, enc_state)
+
+        dec_in = gen_seq.to(torch.int64)
+        dec_out, attns = self.critic_decoder(dec_in, memory_bank,
+                                             memory_lengths=lengths,
+                                             with_align=with_align)
+
+        Q_all = self.output_layer(dec_out)
+
+        Q_mod = Q_all.gather(2, gen_seq.to(torch.int64))
+
+        return Q_mod, Q_all
+
+    def update_dropout(self, dropout):
+        self.encoder.update_dropout(dropout)
+        self.decoder.update_dropout(dropout)
+
+    def count_parameters(self, log=print):
+        """Count number of parameters in model (& print with `log` callback).
+
+        Returns:
+            (int, int):
+            * encoder side parameter count
+            * decoder side parameter count
+        """
+
+        enc, dec, out_layer = 0, 0, 0
+        for name, param in self.named_parameters():
+            if 'encoder' in name:
+                enc += param.nelement()
+            elif 'decoder' in name:
+                dec += param.nelement()
+            else:
+                out_layer += param.nelement()
+        if callable(log):
+            log('critic encoder: {}'.format(enc))
+            log('critic decoder: {}'.format(dec))
+            log('critic output layer: {}'.format(out_layer))
+
+        return enc, dec, out_layer
+
+class CriticV(nn.Module):
+
+    def __int__(self, encoder, decoder, output_layer):
+
+        self.encoder = encoder
+        self.decoder = decoder
+        self.output_layer = output_layer
+
+    def forward(self):
+        pass
+
+    def update_dropout(self, dropout):
+        self.encoder.update_dropout(dropout)
+        self.decoder.update_dropout(dropout)
+
+    def count_parameters(self, log=print):
+        """Count number of parameters in model (& print with `log` callback).
+
+        Returns:
+            (int, int):
+            * encoder side parameter count
+            * decoder side parameter count
+        """
+
+        enc, dec, out_layer = 0, 0, 0
+        for name, param in self.named_parameters():
+            if 'encoder' in name:
+                enc += param.nelement()
+            elif 'decoder' in name:
+                dec += param.nelement()
+            else:
+                out_layer += param.nelement()
+        if callable(log):
+            log('critic encoder: {}'.format(enc))
+            log('critic decoder: {}'.format(dec))
+            log('critic output layer: {}'.format(out_layer))
+
+        return enc, dec, out_layer
+
+class ACNMTModel(BaseModel):
+    """
+    Core trainable object in OpenNMT. Implements a trainable interface
+    for a simple, generic encoder + decoder model.
+    Args:
+      encoder (onmt.encoders.EncoderBase): an encoder object
+      decoder (onmt.decoders.DecoderBase): a decoder object
+    """
+
+    def __init__(self, actor, critic, train_mode, tgt_field):
+        super(ACNMTModel, self).__init__()
+        self.actor = actor
+        self.critic = critic
+        self.tgt_field = tgt_field
+        self.eos_token = tgt_field.base_field.vocab.stoi[tgt_field.base_field.eos_token]
+
+        # # create a target critic
+        # self.target_critic_encoder = copy.deepcopy(self.critic_encoder)
+        # self.target_critic_decoder = copy.deepcopy(self.critic_decoder)
+
+        self.train_mode = train_mode
+
+        # TODO remove the print line
+        print('Train Mode: {}'.format(self.train_mode))
+
+    def forward(self, src, tgt, lengths, bptt=False, with_align=False):
+
+        return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode)
+
+    # def target_critic_forward(self, ):
+    #
+    #     pass
+
+    def update_dropout(self, dropout):
+        self.actor.update_dropout(dropout)
+        self.critic.update_dropout(dropout)
+
+    def count_parameters(self, log=print):
+        """Count number of parameters in model (& print with `log` callback).
+
+        Returns:
+            (int, int):
+            * encoder side parameter count
+            * decoder side parameter count
+        """
+
+        actor_enc, actor_dec = self.actor.count_parameters(log)
+        critic_enc, critic_dec, critic_out_layer = self.critic.count_parameters(log)
+
+        total_actor = actor_enc + actor_dec
+        total_critic = critic_enc + critic_dec + critic_out_layer
+
+        log('* Actor: number of parameters: {}'.format(total_actor))
+        log('* Critic: number of parameters: {}'.format(total_critic))
+        log('* Total: number of parameters: {}'.format(total_actor + total_critic))
+
+        return total_actor, total_critic
+
+class A2CNMTModel(BaseModel):
+    """
+    Core trainable object in OpenNMT. Implements a trainable interface
+    for a simple, generic encoder + decoder model.
+    Args:
+      encoder (onmt.encoders.EncoderBase): an encoder object
+      decoder (onmt.decoders.DecoderBase): a decoder object
+    """
+
+    def __init__(self, actor, critic, train_mode, tgt_field):
+        super(A2CNMTModel, self).__init__()
+        self.actor = actor
+        self.critic = critic
+        self.tgt_field = tgt_field
+        self.eos_token = tgt_field.base_field.vocab.stoi[tgt_field.base_field.eos_token]
+
+        # # create a target critic
+        # self.target_critic_encoder = copy.deepcopy(self.critic_encoder)
+        # self.target_critic_decoder = copy.deepcopy(self.critic_decoder)
+
+        self.train_mode = train_mode
+
+        # TODO remove the print line
+        print('Train Mode: {}'.format(self.train_mode))
+
+    def forward(self, src, tgt, lengths, bptt=False, with_align=False):
+
+        return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode)
+
+    # def target_critic_forward(self, ):
+    #
+    #     pass
+
+    def update_dropout(self, dropout):
+        self.actor.update_dropout(dropout)
+        self.critic.update_dropout(dropout)
+
+    def count_parameters(self, log=print):
+        """Count number of parameters in model (& print with `log` callback).
+
+        Returns:
+            (int, int):
+            * encoder side parameter count
+            * decoder side parameter count
+        """
+
+        actor_enc, actor_dec = self.actor.count_parameters(log)
+        critic_enc, critic_dec, critic_out_layer = self.critic.count_parameters(log)
+
+        total_actor = actor_enc + actor_dec
+        total_critic = critic_enc + critic_dec + critic_out_layer
+
+        log('* Actor: number of parameters: {}'.format(total_actor))
+        log('* Critic: number of parameters: {}'.format(total_critic))
+        log('* Total: number of parameters: {}'.format(total_actor + total_critic))
+
+        return total_actor, total_critic
 
 class LanguageModel(BaseModel):
     """

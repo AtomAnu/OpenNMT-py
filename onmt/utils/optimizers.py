@@ -228,7 +228,7 @@ class Optimizer(object):
         self._scaler = None
 
     @classmethod
-    def from_opt(cls, model, opt, checkpoint=None):
+    def from_opt(cls, model, opt, checkpoint=None, ac_optim_opt=None):
         """Builds the optimizer from options.
 
         Args:
@@ -236,6 +236,8 @@ class Optimizer(object):
           model: The model to optimize.
           opt: The dict of user options.
           checkpoint: An optional checkpoint to load states from.
+          ac_optim_opt: An optional option for specifying whether to create an optimiser
+                        for the actor or the critic (** to be specified only when using checkpoint)
 
         Returns:
           An ``Optimizer`` instance.
@@ -244,7 +246,12 @@ class Optimizer(object):
         optim_state_dict = None
 
         if opt.train_from and checkpoint is not None:
-            optim = checkpoint['optim']
+            if ac_optim_opt == None:
+                optim = checkpoint['optim']
+            elif ac_optim_opt == 'actor':
+                optim = checkpoint['actor_optim']
+            elif ac_optim_opt == 'critic':
+                optim = checkpoint['critic_optim']
             ckpt_opt = checkpoint['opt']
             ckpt_state_dict = {}
             if isinstance(optim, Optimizer):  # Backward compatibility.

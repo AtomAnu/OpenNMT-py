@@ -24,7 +24,7 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/OpenSubtitles-v2016/model
+save_model: data/OpenSubtitles-v2016/actor_pretraining/model
 keep_checkpoint: 50
 save_checkpoint_steps: 5000
 average_decay: 0.0005
