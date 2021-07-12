@@ -325,6 +325,10 @@ class ACNMTModel(BaseModel):
     def decoder(self):
         return self.actor.decoder
 
+    @property
+    def generator(self):
+        return self.actor.generator
+
     def forward(self, src, tgt, lengths, bptt=False, with_align=False):
 
         return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode)
