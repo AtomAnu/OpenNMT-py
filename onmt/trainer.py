@@ -76,7 +76,7 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None):
     else:
         actor_optim, critic_optim = optim
 
-        trainer = onmt.ACTrainer(model, train_loss, valid_loss, optim, trunc_size,
+        trainer = onmt.ACTrainer(model, train_loss, valid_loss, actor_optim, critic_optim, trunc_size,
                                  shard_size, norm_method,
                                  accum_count, accum_steps,
                                  n_gpu, gpu_rank,
