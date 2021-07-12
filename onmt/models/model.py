@@ -321,6 +321,10 @@ class ACNMTModel(BaseModel):
         # TODO remove the print line
         print('Train Mode: {}'.format(self.train_mode))
 
+    @property
+    def decoder(self):
+        return self.actor.decoder
+
     def forward(self, src, tgt, lengths, bptt=False, with_align=False):
 
         return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode)
