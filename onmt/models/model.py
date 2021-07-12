@@ -306,7 +306,7 @@ class ACNMTModel(BaseModel):
     """
 
     def __init__(self, actor, critic, train_mode, tgt_field):
-        super(ACNMTModel, self).__init__()
+        super(ACNMTModel, self).__init__(actor.encoder, actor.decoder)
         self.actor = actor
         self.critic = critic
         self.tgt_field = tgt_field
