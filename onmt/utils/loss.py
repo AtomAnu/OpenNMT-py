@@ -70,7 +70,7 @@ def build_loss_compute(model, tgt_field, opt, train=True):
                 f"No copy generator loss defined for task {opt.model_task}"
             )
     else:
-        if opt.model_task == ModelTask.SEQ2SEQ or opt.train_mode == TrainMode.ACTOR:
+        if opt.model_task == ModelTask.SEQ2SEQ:
             compute = NMTLossCompute(
                 criterion,
                 loss_gen,
@@ -87,7 +87,7 @@ def build_loss_compute(model, tgt_field, opt, train=True):
                 lambda_coverage=opt.lambda_coverage,
                 lambda_align=opt.lambda_align,
             )
-        elif opt.train_mode == TrainMode.CRITIC:
+        elif opt.model_task == ModelTask.AC:
             compute = ACLossCompute(
                 criterion,
                 loss_gen,
