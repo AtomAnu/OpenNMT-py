@@ -198,7 +198,6 @@ class Actor(nn.Module):
         output_mask = torch.ones(gen_seq.shape[0], gen_seq.shape[1], gen_seq.shape[2]).to('cuda')
 
         for row in range(0, gen_seq.shape[1]):
-            print(output_mask[first_eos_idx[row] + 1:, row])
             output_mask[first_eos_idx[row] + 1:, row] = 0
 
         return output_mask.to(torch.bool)
