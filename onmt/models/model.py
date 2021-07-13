@@ -152,7 +152,7 @@ class Actor(nn.Module):
 
                     policy_dist = torch.cat([policy_dist, scores.exp()], dim=0)
 
-                output_mask = self.compute_output_mask(gen_seq)
+                output_mask = self.compute_output_mask(gen_seq, tgt_field.base_field.vocab.stoi[tgt_field.base_field.eos_token])
                 gen_seq = gen_seq * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
                 policy_dist = policy_dist * output_mask.to(torch.int64)
 
