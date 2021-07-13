@@ -611,6 +611,199 @@ class ACLossCompute(LossComputeBase):
             )
         return shard_state
 
+class A2CLossCompute(LossComputeBase):
+    """
+    Loss Computation parent for NMTLossCompute and LMLossCompute
+
+    Implement loss compatible with coverage and alignement shards
+    """
+    def __init__(self, criterion, generator, model, tgt_vocab, eos_idx, unk_idx, normalization="sents",
+                 lambda_coverage=0.0, lambda_align=0.0, tgt_shift_index=1):
+        super(ACLossCompute, self).__init__(criterion, generator)
+        self.lambda_coverage = lambda_coverage
+        self.lambda_align = lambda_align
+        self.tgt_shift_index = tgt_shift_index
+        self.model = model
+        self.tgt_vocab = tgt_vocab
+        self.eos_idx = eos_idx
+        self.unk_idx = unk_idx
+
+    def _compute_loss(self, batch, output, target, std_attn=None,
+                      coverage_attn=None, align_head=None, ref_align=None):
+
+        if self.model.train_mode == TrainMode.ACTOR:
+            bottled_output = self._bottle(output)
+
+            scores = self.generator(bottled_output)
+            gtruth = target.view(-1)
+
+            loss = self.criterion(scores, gtruth)
+            if self.lambda_coverage != 0.0:
+                coverage_loss = self._compute_coverage_loss(
+                    std_attn=std_attn, coverage_attn=coverage_attn)
+                loss += coverage_loss
+            if self.lambda_align != 0.0:
+                if align_head.dtype != loss.dtype:  # Fix FP16
+                    align_head = align_head.to(loss.dtype)
+                if ref_align.dtype != loss.dtype:
+                    ref_align = ref_align.to(loss.dtype)
+                align_loss = self._compute_alignement_loss(
+                    align_head=align_head, ref_align=ref_align)
+                loss += align_loss
+            stats = self._stats(loss.clone(), scores, gtruth)
+
+            return (loss, None), stats
+
+        else:
+            Q_mod, Q_all = self.model.critic(target, output)
+
+            policy_dist = std_attn
+            scores = std_attn.log() # log(policy distribution)
+            scores = self._bottle(scores)
+            gtruth = target.view(-1)
+
+            reward_tensor = self._compute_reward(output, target, bleu_add_1)
+
+            critic_loss = ((Q_mod - (reward_tensor + (policy_dist * Q_all).sum(2).unsqueeze(2)))**2).sum((0,1))
+
+            if self.model.train_mode == TrainMode.CRITIC:
+
+                stats = self._stats(critic_loss.clone(), scores, gtruth)
+
+                return (None, critic_loss), stats
+            else:
+
+                actor_loss = -(policy_dist * Q_all).sum()
+
+                stats = self._stats(actor_loss.clone(), scores, gtruth)
+
+                return (actor_loss, critic_loss), stats
+
+    def _compute_reward(self, output, target, reward_function):
+
+        reward_tensor = torch.zeros(output.shape[0], output.shape[1]).to('cuda')
+
+        for col in range(0, output.shape[1]):
+            ref = ''
+            hyp = ''
+            reward_list = []
+
+            for ref_row in range(0, target.shape[0]):
+
+                tok_idx = int(target[ref_row, col])
+
+                if tok_idx == self.padding_idx:
+                    break
+                else:
+                    tok = self.tgt_vocab.itos[tok_idx]
+                    ref += tok + ' '
+
+            for hyp_row in range(0, output.shape[0]):
+
+                tok_idx = int(output[hyp_row, col])
+
+                if tok_idx == self.padding_idx:
+                    break
+                else:
+                    tok = self.tgt_vocab.itos[tok_idx]
+                    hyp += tok + ' '
+
+                    reward = reward_function(hyp, ref)
+
+                    reward_list.append(reward)
+
+                    if hyp_row == output.shape[0] - 1:
+                        hyp_row += 1
+
+            reward_tensor[:hyp_row, col] = torch.tensor(reward_list)
+
+        reward_tensor = reward_tensor.unsqueeze(2)
+
+        return reward_tensor
+
+    def _add_coverage_shard_state(self, shard_state, attns):
+        coverage = attns.get("coverage", None)
+        std = attns.get("std", None)
+        assert attns is not None
+        assert coverage is not None, (
+            "lambda_coverage != 0.0 requires coverage attention"
+            " that could not be found in the model."
+            " Transformer decoders do not implement coverage"
+        )
+        assert std is not None, (
+            "lambda_coverage != 0.0 requires attention mechanism"
+            " that could not be found in the model."
+        )
+        shard_state.update({"std_attn": attns.get("std"),
+                            "coverage_attn": coverage})
+
+    def _compute_coverage_loss(self, std_attn, coverage_attn):
+        covloss = torch.min(std_attn, coverage_attn).sum()
+        covloss *= self.lambda_coverage
+        return covloss
+
+    def _add_align_shard_state(self, shard_state, batch, range_start,
+                               range_end, attns):
+        # attn_align should be in (batch_size, pad_tgt_size, pad_src_size)
+        attn_align = attns.get("align", None)
+        # align_idx should be a Tensor in size([N, 3]), N is total number
+        # of align src-tgt pair in current batch, each as
+        # ['sent_N°_in_batch', 'tgt_id+1', 'src_id'] (check AlignField)
+        align_idx = batch.align
+        assert attns is not None
+        assert attn_align is not None, (
+            "lambda_align != 0.0 requires " "alignement attention head"
+        )
+        assert align_idx is not None, (
+            "lambda_align != 0.0 requires " "provide guided alignement"
+        )
+        pad_tgt_size, batch_size, _ = batch.tgt.size()
+        pad_src_size = batch.src[0].size(0)
+        align_matrix_size = [batch_size, pad_tgt_size, pad_src_size]
+        ref_align = onmt.utils.make_batch_align_matrix(
+            align_idx, align_matrix_size, normalize=True
+        )
+        # NOTE: tgt-src ref alignement that in range_ of shard
+        # (coherent with batch.tgt)
+        shard_state.update(
+            {
+                "align_head": attn_align,
+                "ref_align": ref_align[:, range_start:range_end, :],
+            }
+        )
+
+    def _compute_alignement_loss(self, align_head, ref_align):
+        """Compute loss between 2 partial alignment matrix."""
+        # align_head contains value in [0, 1) presenting attn prob,
+        # 0 was resulted by the context attention src_pad_mask
+        # So, the correspand position in ref_align should also be 0
+        # Therefore, clip align_head to > 1e-18 should be bias free.
+        align_loss = -align_head.clamp(min=1e-18).log().mul(ref_align).sum()
+        align_loss *= self.lambda_align
+        return align_loss
+
+    def _make_shard_state(self, batch, output, range_, attns=None):
+        range_start = range_[0] + self.tgt_shift_index
+        range_end = range_[1]
+
+        if self.model.train_mode == TrainMode.ACTOR:
+            shard_state = {
+                "output": output,
+                "target": batch.tgt[range_start:range_end, :, 0],
+            }
+        else:
+            shard_state = {
+                "output": output[range_start:range_end, :],
+                "target": batch.tgt[range_start:range_end, :, 0],
+                "std_attn": attns[range_start:range_end, :, :],
+            }
+        if self.lambda_coverage != 0.0:
+            self._add_coverage_shard_state(shard_state, attns)
+        if self.lambda_align != 0.0:
+            self._add_align_shard_state(
+                shard_state, batch, range_start, range_end, attns
+            )
+        return shard_state
 
 def filter_shard_state(state, shard_size=None):
     for k, v in state.items():
