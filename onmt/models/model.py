@@ -111,7 +111,7 @@ class Actor(nn.Module):
         self.encoder = encoder
         self.decoder = decoder
 
-    def forward(self, src, tgt, lengths, bptt=False, with_align=False, train_mode=TrainMode.ACTOR):
+    def forward(self, src, tgt, lengths, bptt=False, with_align=False, train_mode=TrainMode.ACTOR, tgt_field=None):
 
         if train_mode == TrainMode.ACTOR:
             enc_state, memory_bank, lengths = self.encoder(src, lengths)
@@ -135,7 +135,7 @@ class Actor(nn.Module):
                     self.decoder.init_state(src, memory_bank, enc_state)
 
                 gen_seq = tgt[0].unsqueeze(0)
-                policy_dist = torch.zeros(1, tgt.shape[1], len(self.tgt_field.base_field.vocab)).to('cuda')
+                policy_dist = torch.zeros(1, tgt.shape[1], len(tgt_field.base_field.vocab)).to('cuda')
                 gen_word = gen_seq
 
                 # TODO make gen_seq sequence length more flexible
@@ -166,7 +166,7 @@ class Actor(nn.Module):
                 self.decoder.init_state(src, memory_bank, enc_state)
 
             gen_seq = tgt[0].unsqueeze(0)
-            policy_dist = torch.zeros(1, tgt.shape[1], len(self.tgt_field.base_field.vocab)).to('cuda')
+            policy_dist = torch.zeros(1, tgt.shape[1], len(tgt_field.base_field.vocab)).to('cuda')
             gen_word = gen_seq
 
             # TODO make gen_seq sequence length more flexible
@@ -182,15 +182,15 @@ class Actor(nn.Module):
 
                 policy_dist = torch.cat([policy_dist, scores.exp()], dim=0)
 
-            output_mask = self.compute_output_mask(gen_seq)
+            output_mask = self.compute_output_mask(gen_seq, tgt_field.base_field.vocab.stoi[tgt_field.base_field.eos_token])
             gen_seq = gen_seq * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
             policy_dist = policy_dist * output_mask.to(torch.int64)
 
             return gen_seq, policy_dist
 
-    def compute_output_mask(self, gen_seq):
+    def compute_output_mask(self, gen_seq, eos_token):
         # to be used when the decoder conditions on its own output
-        eos_idx = gen_seq.eq(self.eos_token).to(torch.int64)
+        eos_idx = gen_seq.eq(eos_token).to(torch.int64)
         value_range = torch.arange(gen_seq.shape[0], 0, -1).to('cuda')
         output_multiplied = (eos_idx.transpose(0, 2) * value_range).transpose(0, 2)
         first_eos_idx = torch.argmax(output_multiplied, 0, keepdim=True).view(-1)
@@ -352,7 +352,6 @@ class ACNMTModel(BaseModel):
         self.actor = actor
         self.critic = critic
         self.tgt_field = tgt_field
-        self.eos_token = tgt_field.base_field.vocab.stoi[tgt_field.base_field.eos_token]
         self.train_mode = train_mode
 
     @property
@@ -369,7 +368,7 @@ class ACNMTModel(BaseModel):
 
     def forward(self, src, tgt, lengths, bptt=False, with_align=False):
 
-        return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode)
+        return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode, self.tgt_field)
 
     def update_dropout(self, dropout):
         self.actor.update_dropout(dropout)
@@ -410,7 +409,6 @@ class A2CNMTModel(BaseModel):
         self.actor = actor
         self.critic = critic
         self.tgt_field = tgt_field
-        self.eos_token = tgt_field.base_field.vocab.stoi[tgt_field.base_field.eos_token]
         self.train_mode = train_mode
 
     @property
@@ -427,7 +425,7 @@ class A2CNMTModel(BaseModel):
 
     def forward(self, src, tgt, lengths, bptt=False, with_align=False):
 
-        return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode)
+        return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode, self.tgt_field)
 
     def update_dropout(self, dropout):
         self.actor.update_dropout(dropout)
