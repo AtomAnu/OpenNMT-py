@@ -356,6 +356,10 @@ class ACNMTModel(BaseModel):
         self.train_mode = train_mode
 
     @property
+    def encoder(self):
+        return self.actor.encoder
+
+    @property
     def decoder(self):
         return self.actor.decoder
 
@@ -408,6 +412,10 @@ class A2CNMTModel(BaseModel):
         self.tgt_field = tgt_field
         self.eos_token = tgt_field.base_field.vocab.stoi[tgt_field.base_field.eos_token]
         self.train_mode = train_mode
+
+    @property
+    def encoder(self):
+        return self.actor.encoder
 
     @property
     def decoder(self):
