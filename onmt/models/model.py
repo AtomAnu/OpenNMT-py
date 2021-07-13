@@ -141,8 +141,6 @@ class Actor(nn.Module):
                 # TODO make gen_seq sequence length more flexible
                 for step in range(0, tgt.shape[0]):
 
-                    print('tgt shape 0: {}'.format(tgt.shape[0]))
-
                     dec_out, attns = self.decoder(gen_word, memory_bank,
                                                   step=step,
                                                   memory_lengths=lengths,
@@ -157,6 +155,36 @@ class Actor(nn.Module):
                 output_mask = self.compute_output_mask(gen_seq)
                 gen_seq = gen_seq * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
                 policy_dist = policy_dist * output_mask.to(torch.int64)
+
+            return gen_seq, policy_dist
+
+        else:
+
+            enc_state, memory_bank, lengths = self.encoder(src, lengths)
+
+            if not bptt:
+                self.decoder.init_state(src, memory_bank, enc_state)
+
+            gen_seq = tgt[0].unsqueeze(0)
+            policy_dist = torch.zeros(1, tgt.shape[1], len(self.tgt_field.base_field.vocab)).to('cuda')
+            gen_word = gen_seq
+
+            # TODO make gen_seq sequence length more flexible
+            for step in range(0, tgt.shape[0]):
+                dec_out, attns = self.decoder(gen_word, memory_bank,
+                                              step=step,
+                                              memory_lengths=lengths,
+                                              with_align=with_align)
+
+                scores = self.generator(dec_out)
+                gen_word = torch.argmax(scores, 2).unsqueeze(2)
+                gen_seq = torch.cat([gen_seq, gen_word], dim=0)
+
+                policy_dist = torch.cat([policy_dist, scores.exp()], dim=0)
+
+            output_mask = self.compute_output_mask(gen_seq)
+            gen_seq = gen_seq * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
+            policy_dist = policy_dist * output_mask.to(torch.int64)
 
             return gen_seq, policy_dist
 
@@ -266,7 +294,21 @@ class CriticV(nn.Module):
         self.output_layer = output_layer
 
     def forward(self):
-        pass
+        lengths = torch.tensor([tgt.shape[0]]).repeat(tgt.shape[1]).to('cuda')
+
+        enc_state, memory_bank, lengths = self.critic_encoder(tgt.unsqueeze(2), lengths)
+
+        if not bptt:
+            self.critic_decoder.init_state(tgt, memory_bank, enc_state)
+
+        dec_in = gen_seq.to(torch.int64)
+        dec_out, attns = self.critic_decoder(dec_in, memory_bank,
+                                             memory_lengths=lengths,
+                                             with_align=with_align)
+
+        V = self.output_layer(dec_out)
+
+        return V
 
     def update_dropout(self, dropout):
         self.encoder.update_dropout(dropout)
@@ -311,15 +353,7 @@ class ACNMTModel(BaseModel):
         self.critic = critic
         self.tgt_field = tgt_field
         self.eos_token = tgt_field.base_field.vocab.stoi[tgt_field.base_field.eos_token]
-
-        # # create a target critic
-        # self.target_critic_encoder = copy.deepcopy(self.critic_encoder)
-        # self.target_critic_decoder = copy.deepcopy(self.critic_decoder)
-
         self.train_mode = train_mode
-
-        # TODO remove the print line
-        print('Train Mode: {}'.format(self.train_mode))
 
     @property
     def decoder(self):
@@ -332,10 +366,6 @@ class ACNMTModel(BaseModel):
     def forward(self, src, tgt, lengths, bptt=False, with_align=False):
 
         return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode)
-
-    # def target_critic_forward(self, ):
-    #
-    #     pass
 
     def update_dropout(self, dropout):
         self.actor.update_dropout(dropout)
@@ -372,28 +402,24 @@ class A2CNMTModel(BaseModel):
     """
 
     def __init__(self, actor, critic, train_mode, tgt_field):
-        super(A2CNMTModel, self).__init__()
+        super(A2CNMTModel, self).__init__(actor.encoder, actor.decoder)
         self.actor = actor
         self.critic = critic
         self.tgt_field = tgt_field
         self.eos_token = tgt_field.base_field.vocab.stoi[tgt_field.base_field.eos_token]
-
-        # # create a target critic
-        # self.target_critic_encoder = copy.deepcopy(self.critic_encoder)
-        # self.target_critic_decoder = copy.deepcopy(self.critic_decoder)
-
         self.train_mode = train_mode
 
-        # TODO remove the print line
-        print('Train Mode: {}'.format(self.train_mode))
+    @property
+    def decoder(self):
+        return self.actor.decoder
+
+    @property
+    def generator(self):
+        return self.actor.generator
 
     def forward(self, src, tgt, lengths, bptt=False, with_align=False):
 
         return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode)
-
-    # def target_critic_forward(self, ):
-    #
-    #     pass
 
     def update_dropout(self, dropout):
         self.actor.update_dropout(dropout)

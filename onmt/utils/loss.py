@@ -431,11 +431,6 @@ class ACLossCompute(LossComputeBase):
     def _compute_loss(self, batch, output, target, std_attn=None,
                       coverage_attn=None, align_head=None, ref_align=None):
 
-        """
-        Q_mod.shape: [gen_seq_len x batch_size x 1]
-        Q_all.shape: [gen_seq_len x batch_size x tgt_vocab_size]
-        reward_tensor.shape: [gen_seq_len x batch_size x 1]
-        """
         if self.model.train_mode == TrainMode.ACTOR:
             bottled_output = self._bottle(output)
 
@@ -459,7 +454,12 @@ class ACLossCompute(LossComputeBase):
 
             return (loss, None), stats
 
-        elif self.model.train_mode == TrainMode.CRITIC:
+        else:
+            """
+            Q_mod.shape: [gen_seq_len x batch_size x 1]
+            Q_all.shape: [gen_seq_len x batch_size x tgt_vocab_size]
+            reward_tensor.shape: [gen_seq_len x batch_size x 1]
+            """
 
             Q_mod, Q_all = self.model.critic(target, output)
 
@@ -468,49 +468,64 @@ class ACLossCompute(LossComputeBase):
             scores = self._bottle(scores)
             gtruth = target.view(-1)
 
-            reward_tensor = torch.zeros(output.shape[0], output.shape[1]).to('cuda')
-
-            for col in range(0, output.shape[1]):
-                ref = ''
-                hyp = ''
-                reward_list = []
-
-                for ref_row in range(0, target.shape[0]):
-
-                    tok_idx = int(output[ref_row, col])
-
-                    if tok_idx == self.padding_idx:
-                        break
-                    else:
-                        tok = self.tgt_vocab.itos[tok_idx]
-                        ref += tok + ' '
-
-                for hyp_row in range(0, output.shape[0]):
-
-                    tok_idx = int(output[hyp_row, col])
-
-                    if tok_idx == self.padding_idx:
-                        break
-                    else:
-                        tok = self.tgt_vocab.itos[tok_idx]
-                        hyp += tok + ' '
-
-                        reward = bleu_add_1(hyp, ref)
-
-                        reward_list.append(reward)
-
-                        if hyp_row == output.shape[0]-1:
-                            hyp_row += 1
-
-                reward_tensor[:hyp_row, col] = torch.tensor(reward_list)
-
-            reward_tensor = reward_tensor.unsqueeze(2)
+            reward_tensor = self._compute_reward(output, target, bleu_add_1)
 
             critic_loss = ((Q_mod - (reward_tensor + (policy_dist * Q_all).sum(2).unsqueeze(2)))**2).sum((0,1))
 
-            stats = self._stats(critic_loss.clone(), scores, gtruth)
+            if self.model.train_mode == TrainMode.CRITIC:
 
-            return (None, critic_loss), stats
+                stats = self._stats(critic_loss.clone(), scores, gtruth)
+
+                return (None, critic_loss), stats
+            else:
+
+                actor_loss = -(policy_dist * Q_all).sum()
+
+                stats = self._stats(actor_loss.clone(), scores, gtruth)
+
+                return (actor_loss, critic_loss), stats
+
+    def _compute_reward(self, output, target, reward_function):
+
+        reward_tensor = torch.zeros(output.shape[0], output.shape[1]).to('cuda')
+
+        for col in range(0, output.shape[1]):
+            ref = ''
+            hyp = ''
+            reward_list = []
+
+            for ref_row in range(0, target.shape[0]):
+
+                tok_idx = int(target[ref_row, col])
+
+                if tok_idx == self.padding_idx:
+                    break
+                else:
+                    tok = self.tgt_vocab.itos[tok_idx]
+                    ref += tok + ' '
+
+            for hyp_row in range(0, output.shape[0]):
+
+                tok_idx = int(output[hyp_row, col])
+
+                if tok_idx == self.padding_idx:
+                    break
+                else:
+                    tok = self.tgt_vocab.itos[tok_idx]
+                    hyp += tok + ' '
+
+                    reward = reward_function(hyp, ref)
+
+                    reward_list.append(reward)
+
+                    if hyp_row == output.shape[0] - 1:
+                        hyp_row += 1
+
+            reward_tensor[:hyp_row, col] = torch.tensor(reward_list)
+
+        reward_tensor = reward_tensor.unsqueeze(2)
+
+        return reward_tensor
 
     def _add_coverage_shard_state(self, shard_state, attns):
         coverage = attns.get("coverage", None)
