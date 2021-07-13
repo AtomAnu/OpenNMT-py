@@ -660,7 +660,7 @@ class Inference(object):
 class Translator(Inference):
     @classmethod
     def validate_task(cls, task):
-        if task != ModelTask.SEQ2SEQ or task != ModelTask.AC:
+        if task != ModelTask.SEQ2SEQ and task != ModelTask.AC:
             raise ValueError(
                 f"Translator does not support task {task}."
                 f" Tasks supported: {ModelTask.SEQ2SEQ}"
