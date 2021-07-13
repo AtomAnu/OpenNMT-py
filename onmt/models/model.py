@@ -241,13 +241,13 @@ class CriticQ(nn.Module):
 
         lengths = torch.tensor([tgt.shape[0]]).repeat(tgt.shape[1]).to('cuda')
 
-        enc_state, memory_bank, lengths = self.critic_encoder(tgt.unsqueeze(2), lengths)
+        enc_state, memory_bank, lengths = self.encoder(tgt.unsqueeze(2), lengths)
 
         if not bptt:
-            self.critic_decoder.init_state(tgt, memory_bank, enc_state)
+            self.decoder.init_state(tgt, memory_bank, enc_state)
 
         dec_in = gen_seq.to(torch.int64)
-        dec_out, attns = self.critic_decoder(dec_in, memory_bank,
+        dec_out, attns = self.decoder(dec_in, memory_bank,
                                              memory_lengths=lengths,
                                              with_align=with_align)
 
@@ -296,13 +296,13 @@ class CriticV(nn.Module):
     def forward(self):
         lengths = torch.tensor([tgt.shape[0]]).repeat(tgt.shape[1]).to('cuda')
 
-        enc_state, memory_bank, lengths = self.critic_encoder(tgt.unsqueeze(2), lengths)
+        enc_state, memory_bank, lengths = self.encoder(tgt.unsqueeze(2), lengths)
 
         if not bptt:
-            self.critic_decoder.init_state(tgt, memory_bank, enc_state)
+            self.decoder.init_state(tgt, memory_bank, enc_state)
 
         dec_in = gen_seq.to(torch.int64)
-        dec_out, attns = self.critic_decoder(dec_in, memory_bank,
+        dec_out, attns = self.decoder(dec_in, memory_bank,
                                              memory_lengths=lengths,
                                              with_align=with_align)
 
