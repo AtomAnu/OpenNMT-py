@@ -287,7 +287,7 @@ class CriticQ(nn.Module):
 class CriticV(nn.Module):
 
     def __init__(self, encoder, decoder, output_layer):
-
+        super(CriticV, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
         self.output_layer = output_layer
