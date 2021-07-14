@@ -96,6 +96,15 @@ def build_loss_compute(model, tgt_field, opt, train=True):
                 eos_idx,
                 unk_idx
             )
+        elif opt.model_task == ModelTask.A2C:
+            compute = A2CLossCompute(
+                criterion,
+                loss_gen,
+                model,
+                tgt_field.vocab,
+                eos_idx,
+                unk_idx
+            )
         else:
             raise ValueError(
                 f"No compute loss defined for task {opt.model_task}"
