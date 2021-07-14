@@ -77,4 +77,4 @@ attention_dropout: [0.1]
 position_encoding: true
 
 # Logging
-log_file: logs/a2c_transformer.txt
+log_file: logs/a2c/actor_pretraining.txt
