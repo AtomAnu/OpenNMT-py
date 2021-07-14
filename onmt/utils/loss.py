@@ -628,7 +628,7 @@ class A2CLossCompute(LossComputeBase):
     """
     def __init__(self, criterion, generator, model, tgt_vocab, eos_idx, unk_idx, normalization="sents",
                  lambda_coverage=0.0, lambda_align=0.0, tgt_shift_index=1):
-        super(ACLossCompute, self).__init__(criterion, generator)
+        super(A2CLossCompute, self).__init__(criterion, generator)
         self.lambda_coverage = lambda_coverage
         self.lambda_align = lambda_align
         self.tgt_shift_index = tgt_shift_index
