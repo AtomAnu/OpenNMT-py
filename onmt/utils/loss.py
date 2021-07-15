@@ -96,6 +96,15 @@ def build_loss_compute(model, tgt_field, opt, train=True):
                 eos_idx,
                 unk_idx
             )
+        elif opt.model_task == ModelTask.A2C:
+            compute = A2CLossCompute(
+                criterion,
+                loss_gen,
+                model,
+                tgt_field.vocab,
+                eos_idx,
+                unk_idx
+            )
         else:
             raise ValueError(
                 f"No compute loss defined for task {opt.model_task}"
@@ -619,7 +628,7 @@ class A2CLossCompute(LossComputeBase):
     """
     def __init__(self, criterion, generator, model, tgt_vocab, eos_idx, unk_idx, normalization="sents",
                  lambda_coverage=0.0, lambda_align=0.0, tgt_shift_index=1):
-        super(ACLossCompute, self).__init__(criterion, generator)
+        super(A2CLossCompute, self).__init__(criterion, generator)
         self.lambda_coverage = lambda_coverage
         self.lambda_align = lambda_align
         self.tgt_shift_index = tgt_shift_index
