@@ -31,7 +31,7 @@ save_checkpoint_steps: 5000
 average_decay: 0.0005
 seed: 1234
 report_every: 1
-train_steps: 100000
+train_steps: 200000
 valid_steps: 5000
 
 # Batching
