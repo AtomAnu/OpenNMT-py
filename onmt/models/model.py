@@ -292,7 +292,7 @@ class CriticV(nn.Module):
         self.decoder = decoder
         self.output_layer = output_layer
 
-    def forward(self):
+    def forward(self, tgt, gen_seq, lengths=None, bptt=False, with_align=False):
         lengths = torch.tensor([tgt.shape[0]]).repeat(tgt.shape[1]).to('cuda')
 
         enc_state, memory_bank, lengths = self.encoder(tgt.unsqueeze(2), lengths)
