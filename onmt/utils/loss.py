@@ -664,7 +664,7 @@ class A2CLossCompute(LossComputeBase):
             return (loss, None), stats
 
         else:
-            Q_mod, Q_all = self.model.critic(target, output)
+            V = self.model.critic(target, output)
 
             policy_dist = std_attn
             scores = std_attn.log() # log(policy distribution)
@@ -672,8 +672,9 @@ class A2CLossCompute(LossComputeBase):
             gtruth = target.view(-1)
 
             reward_tensor = self._compute_reward(output, target, bleu_add_1)
+            reward_to_go_tensor = self._compute_reward_to_go(reward_tensor)
 
-            critic_loss = ((Q_mod - (reward_tensor + (policy_dist * Q_all).sum(2).unsqueeze(2)))**2).sum((0,1))
+            critic_loss = ((V - reward_to_go_tensor)**2).sum((0,1))
 
             if self.model.train_mode == TrainMode.CRITIC:
 
@@ -729,6 +730,16 @@ class A2CLossCompute(LossComputeBase):
         reward_tensor = reward_tensor.unsqueeze(2)
 
         return reward_tensor
+
+    def _compute_reward_to_go(self, reward_tensor, discount_factor=1):
+
+        reward_to_go_tensor = reward_tensor
+
+        for row in range(reward_tensor.shape[0]-1, 0):
+
+            reward_to_go_tensor[row, :, :] += discount_factor * reward_to_go_tensor[row + 1, :, :]
+
+        return reward_to_go_tensor
 
     def _add_coverage_shard_state(self, shard_state, attns):
         coverage = attns.get("coverage", None)

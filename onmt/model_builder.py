@@ -5,6 +5,7 @@ and creates each encoder and decoder accordingly.
 import re
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.nn.init import xavier_uniform_
 
 import onmt.modules
