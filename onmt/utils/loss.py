@@ -496,7 +496,8 @@ class ACLossCompute(LossComputeBase):
                 # print('XENT: {}'.format(xent_loss))
                 # print('XENT shape: {}'.format(xent_loss.shape))
 
-                actor_loss = -(policy_dist * Q_all.detach()).sum() + xent_weight * xent_loss
+                # actor_loss = -(policy_dist * Q_all.detach()).sum() + xent_weight * xent_loss
+                actor_loss = xent_loss
 
                 stats = self._stats(actor_loss.clone(), scores, gtruth)
 
@@ -537,9 +538,9 @@ class ACLossCompute(LossComputeBase):
 
                     if hyp_row == output.shape[0] - 1:
                         hyp_row += 1
-
-            print('Ref: {}'.format(ref))
-            print('Hyp: {}'.format(hyp))
+            if col == 0:
+                print('Ref: {}'.format(ref))
+                print('Hyp: {}'.format(hyp))
 
             reward_tensor[:hyp_row, col] = torch.tensor(reward_list)
 
