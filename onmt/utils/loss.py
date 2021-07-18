@@ -489,6 +489,8 @@ class ACLossCompute(LossComputeBase):
             else:
 
                 xent_loss = self.criterion(scores, gtruth)
+                print('XENT: {}'.format(xent_loss))
+                print('XENT shape: {}'.format(xent_loss.shape))
 
                 actor_loss = -(policy_dist * Q_all.detach()).sum() + xent_weight * xent_loss
 
