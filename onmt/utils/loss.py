@@ -538,6 +538,9 @@ class ACLossCompute(LossComputeBase):
                     if hyp_row == output.shape[0] - 1:
                         hyp_row += 1
 
+            print('Ref: {}'.format(ref))
+            print('Hyp: {}'.format(hyp))
+
             reward_tensor[:hyp_row, col] = torch.tensor(reward_list)
 
         reward_tensor = reward_tensor.unsqueeze(2)
