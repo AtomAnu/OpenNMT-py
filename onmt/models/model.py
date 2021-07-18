@@ -156,8 +156,6 @@ class Actor(nn.Module):
                 gen_seq = gen_seq * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
                 policy_dist = policy_dist * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
 
-            print('policy_dist: {}'.format(policy_dist))
-
             return gen_seq, policy_dist
 
         else:
@@ -186,7 +184,7 @@ class Actor(nn.Module):
 
             output_mask = self.compute_output_mask(gen_seq, tgt_field.base_field.vocab.stoi[tgt_field.base_field.eos_token])
             gen_seq = gen_seq * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
-            policy_dist = policy_dist * output_mask.to(torch.int64)
+            policy_dist = policy_dist * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
 
             return gen_seq, policy_dist
 
