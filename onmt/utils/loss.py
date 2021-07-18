@@ -438,7 +438,7 @@ class ACLossCompute(LossComputeBase):
         self.unk_idx = unk_idx
 
     def _compute_loss(self, batch, output, target, std_attn=None,
-                      coverage_attn=None, align_head=None, ref_align=None):
+                      coverage_attn=None, align_head=None, ref_align=None, xent_weight=0.5):
 
         if self.model.train_mode == TrainMode.ACTOR:
             bottled_output = self._bottle(output)
@@ -488,7 +488,9 @@ class ACLossCompute(LossComputeBase):
                 return (None, critic_loss), stats
             else:
 
-                actor_loss = -(policy_dist * Q_all.detach()).sum()
+                xent_loss = self.criterion(scores, gtruth)
+
+                actor_loss = -(policy_dist * Q_all.detach()).sum() + xent_weight * xent_loss
 
                 stats = self._stats(actor_loss.clone(), scores, gtruth)
 
