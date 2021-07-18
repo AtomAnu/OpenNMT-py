@@ -156,6 +156,8 @@ class Actor(nn.Module):
                 gen_seq = gen_seq * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
                 policy_dist = policy_dist * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
 
+            print('policy_dist: {}'.format(policy_dist))
+
             return gen_seq, policy_dist
 
         else:
