@@ -470,7 +470,7 @@ class ACLossCompute(LossComputeBase):
             reward_tensor.shape: [gen_seq_len x batch_size x 1]
             """
 
-            Q_mod, Q_all = self.model.critic(target, output)
+            Q_mod, Q_all = self.model.critic(target.detach().requires_grad_(), output.detach().requires_grad_())
 
             policy_dist = std_attn
             scores = std_attn.log() # log(policy distribution)
@@ -479,7 +479,7 @@ class ACLossCompute(LossComputeBase):
 
             reward_tensor = self._compute_reward(output, target, bleu_add_1)
 
-            critic_loss = ((Q_mod - (reward_tensor + (policy_dist * Q_all).sum(2).unsqueeze(2)))**2).sum((0,1))
+            critic_loss = ((Q_mod - (reward_tensor.detach() + (policy_dist.detach() * Q_all).sum(2).unsqueeze(2)))**2).sum((0,1))
 
             if self.model.train_mode == TrainMode.CRITIC:
 
@@ -488,7 +488,7 @@ class ACLossCompute(LossComputeBase):
                 return (None, critic_loss), stats
             else:
 
-                actor_loss = -(policy_dist * Q_all).sum()
+                actor_loss = -(policy_dist * Q_all.detach()).sum()
 
                 stats = self._stats(actor_loss.clone(), scores, gtruth)
 
