@@ -472,11 +472,6 @@ class ACLossCompute(LossComputeBase):
 
             Q_mod, Q_all = self.model.critic(target, output)
 
-            print('target requires_grad: {}'.format(target.requires_grad))
-            print('output requires_grad: {}'.format(output.requires_grad))
-            print('Q_mod requires_grad: {}'.format(Q_mod.requires_grad))
-            print('Q_all requires_grad: {}'.format(Q_all.requires_grad))
-
             policy_dist = std_attn
             scores = std_attn.log() # log(policy distribution)
             scores = self._bottle(scores)
