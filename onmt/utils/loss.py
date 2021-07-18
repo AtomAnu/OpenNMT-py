@@ -470,7 +470,7 @@ class ACLossCompute(LossComputeBase):
             reward_tensor.shape: [gen_seq_len x batch_size x 1]
             """
 
-            Q_mod, Q_all = self.model.critic(target.detach().requires_grad_(), output.detach().requires_grad_())
+            Q_mod, Q_all = self.model.critic(target.to(torch.float).detach().requires_grad_(), output.to(torch.float).detach().requires_grad_())
 
             policy_dist = std_attn
             scores = std_attn.log() # log(policy distribution)
