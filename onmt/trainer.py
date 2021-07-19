@@ -15,6 +15,7 @@ import traceback
 import onmt.utils
 from onmt.utils.logging import logger
 from onmt.constants import ModelTask
+import copy
 
 def build_trainer(opt, device_id, model, fields, optim, model_saver=None):
     """
@@ -76,8 +77,9 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None):
     else:
         actor_optim, critic_optim = optim
 
-        trainer = onmt.ACTrainer(model, train_loss, valid_loss, actor_optim, critic_optim, trunc_size,
-                                 shard_size, norm_method,
+        trainer = onmt.ACTrainer(model, train_loss, valid_loss, actor_optim, critic_optim,
+                                 opt.epsilon, opt.epsilon_decay, opt.use_target_network, opt.target_network_update_period,
+                                 trunc_size, shard_size, norm_method,
                                  accum_count, accum_steps,
                                  n_gpu, gpu_rank,
                                  gpu_verbose_level, report_manager,
@@ -526,6 +528,7 @@ class ACTrainer(object):
     """
 
     def __init__(self, model, train_loss, valid_loss, actor_optim, critic_optim,
+                 epsilon, epsilon_decay, use_target_network, target_network_update_period,
                  trunc_size=0, shard_size=32,
                  norm_method="sents", accum_count=[1],
                  accum_steps=[0],
@@ -539,6 +542,11 @@ class ACTrainer(object):
         self.valid_loss = valid_loss
         self.actor_optim = actor_optim
         self.critic_optim = critic_optim
+        self.epsilon = epsilon
+        self.epsilon_decay = epsilon_decay
+        self.use_target_network = use_target_network
+        if use_target_network: self.target_network = copy.deepcopy(model.critic).cuda()
+        self.target_network_update_period = target_network_update_period
         self.trunc_size = trunc_size
         self.shard_size = shard_size
         self.norm_method = norm_method
@@ -615,6 +623,12 @@ class ACTrainer(object):
                 self.moving_average[i] = \
                     (1 - average_decay) * avg + \
                     cpt.detach().float() * average_decay
+
+    def _update_epsilon(self):
+        self.epsilon *= self.epsilon_decay
+
+    def _update_target_network(self):
+        self.target_network = copy.deepcopy(self.model.critic).cuda()
 
     def train(self,
               train_iter,
@@ -707,6 +721,12 @@ class ACTrainer(object):
             if train_steps > 0 and step >= train_steps:
                 break
 
+            # Update epsilon for the epsilon-greedy policy
+            self._update_epsilon()
+            # Update target critic
+            if self.use_target_network and i % self.target_network_update_period == 0:
+                self._update_target_network()
+
         if self.model_saver is not None:
             self.model_saver.save(step, moving_average=self.moving_average)
         return total_stats
@@ -745,7 +765,7 @@ class ACTrainer(object):
                                                  with_align=self.with_align)
 
                     # Compute loss.
-                    _, batch_stats = self.valid_loss(batch, outputs, attns)
+                    _, batch_stats = self.valid_loss(batch, outputs, attns, target_critic=self.target_network)
 
                 # Update statistics.
                 stats.update(batch_stats)
@@ -800,7 +820,7 @@ class ACTrainer(object):
 
                     outputs, attns = self.model(
                         src, tgt, src_lengths, bptt=bptt,
-                        with_align=self.with_align)
+                        with_align=self.with_align, epsilon=self.epsilon)
                     bptt = True
 
                     # 3. Compute loss.
@@ -808,6 +828,7 @@ class ACTrainer(object):
                         batch,
                         outputs,
                         attns,
+                        target_critic=self.target_network,
                         normalization=normalization,
                         shard_size=self.shard_size,
                         trunc_start=j,

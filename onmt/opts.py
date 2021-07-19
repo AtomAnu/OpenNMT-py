@@ -255,15 +255,51 @@ def model_opts(parser):
         help="Type of task for the model (seq2seq, lm, ac, a2c or a3c)",
     )
 
-    # Training Mode Options (Specific to Actor-Critic Models)
-    group = parser.add_argument_group("Model- TrainMode")
+    # Training Mode and Hyperparameter Options (Specific to Actor-Critic Models)
+    group = parser.add_argument_group("Model- Actor-Critic Model Options")
     group.add(
         "-train_mode",
         "--train_mode",
         default=TrainMode.ACTOR,
         choices=[TrainMode.ACTOR, TrainMode.CRITIC, TrainMode.AC],
-        help="Pre-training/Training mode for Actor-Critic models (actor, critic or ac)"
-    )
+        help="Pre-training/Training mode for Actor-Critic models (actor, critic or ac)")
+    group.add(
+        "-epsilon",
+        "--epsilon",
+        type=float,
+        default=0.0,
+        help="Starting epsilon value for the epsilon-greedy policy (0 - 1)")
+    group.add(
+        "-epsilon_decay",
+        "--epsilon_decay",
+        type=float,
+        default=1.0,
+        help="Epsilon decay rate per step")
+    group.add(
+        "-lambda_xent",
+        "--lambda_xent",
+        type=float,
+        default=1.0,
+        help="Weight of cross-entropy loss in the actor loss during joint training")
+    group.add(
+        "-lambda_var",
+        "--lambda_var",
+        type=float,
+        default=1.0,
+        help="Weight of variance reduction term in the critic loss")
+    group.add(
+        "-use_target_network",
+        "--use_target_network",
+        type=bool,
+        default=False,
+        help="Specify whether to use a target critic network")
+    group.add(
+        "-target_network_update_period",
+        "--target_network_update_period",
+        type=int,
+        default=500,
+        help="Update period of the target network, if used")
+
 
     # Encoder-Decoder Options
     group = parser.add_argument_group('Model- Encoder-Decoder')

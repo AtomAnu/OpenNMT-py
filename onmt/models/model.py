@@ -2,7 +2,7 @@
 import torch
 import torch.nn as nn
 from onmt.constants import TrainMode
-import copy
+import numpy as np
 
 class BaseModel(nn.Module):
     """
@@ -111,7 +111,7 @@ class Actor(nn.Module):
         self.encoder = encoder
         self.decoder = decoder
 
-    def forward(self, src, tgt, lengths, bptt=False, with_align=False, train_mode=TrainMode.ACTOR, tgt_field=None):
+    def forward(self, src, tgt, lengths, bptt=False, with_align=False, train_mode=TrainMode.ACTOR, tgt_field=None, epsilon=0):
 
         if train_mode == TrainMode.ACTOR:
             enc_state, memory_bank, lengths = self.encoder(src, lengths)
@@ -126,81 +126,87 @@ class Actor(nn.Module):
 
             return dec_out, attns
         elif train_mode == TrainMode.CRITIC:
-
             with torch.no_grad():
-
-                enc_state, memory_bank, lengths = self.encoder(src, lengths)
-
-                if not bptt:
-                    self.decoder.init_state(src, memory_bank, enc_state)
-
-                gen_seq = tgt[0].unsqueeze(0)
-                policy_dist = torch.zeros(1, tgt.shape[1], len(tgt_field.base_field.vocab)).to('cuda')
-                gen_word = gen_seq
-
-                # TODO make gen_seq sequence length more flexible
-                for step in range(0, tgt.shape[0]):
-
-                    dec_out, attns = self.decoder(gen_word, memory_bank,
-                                                  step=step,
-                                                  memory_lengths=lengths,
-                                                  with_align=with_align)
-
-                    scores = self.generator(dec_out)
-                    gen_word = torch.argmax(scores, 2).unsqueeze(2)
-                    gen_seq = torch.cat([gen_seq, gen_word], dim=0)
-
-                    policy_dist = torch.cat([policy_dist, scores.exp()], dim=0)
-
-                output_mask = self.compute_output_mask(gen_seq, tgt_field.base_field.vocab.stoi[tgt_field.base_field.eos_token])
-                gen_seq = gen_seq * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
-                policy_dist = policy_dist * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
-
-            return gen_seq, policy_dist
-
+                return self._step_wise_forward(src, tgt, lengths, bptt, with_align, tgt_field, epsilon)
         else:
+            with torch.enable_grad():
+                return self._step_wise_forward(src, tgt, lengths, bptt, with_align, tgt_field, epsilon)
 
-            enc_state, memory_bank, lengths = self.encoder(src, lengths)
+    def _step_wise_forward(self, src, tgt, lengths, bptt=False, with_align=False, tgt_field=None, epsilon=0):
 
-            if not bptt:
-                self.decoder.init_state(src, memory_bank, enc_state)
+        enc_state, memory_bank, lengths = self.encoder(src, lengths)
 
-            gen_seq = tgt[0].unsqueeze(0)
-            policy_dist = torch.zeros(1, tgt.shape[1], len(tgt_field.base_field.vocab)).to('cuda')
-            gen_word = gen_seq
+        if not bptt:
+            self.decoder.init_state(src, memory_bank, enc_state)
 
-            # TODO make gen_seq sequence length more flexible
-            for step in range(0, tgt.shape[0]):
-                dec_out, attns = self.decoder(gen_word, memory_bank,
-                                              step=step,
-                                              memory_lengths=lengths,
-                                              with_align=with_align)
+        gen_seq = tgt[0].unsqueeze(0)
+        gen_tok = gen_seq
 
-                scores = self.generator(dec_out)
-                gen_word = torch.argmax(scores, 2).unsqueeze(2)
-                gen_seq = torch.cat([gen_seq, gen_word], dim=0)
+        # TODO make gen_seq sequence length more flexible
+        for step in range(0, tgt.shape[0]):
+            dec_out, attns = self.decoder(gen_tok, memory_bank,
+                                          step=step,
+                                          memory_lengths=lengths,
+                                          with_align=with_align)
 
+            scores = self.generator(dec_out)
+            # gen_tok = torch.argmax(scores, 2).unsqueeze(2)
+            gen_tok = self._choose_tok(scores, epsilon)
+            gen_seq = torch.cat([gen_seq, gen_tok], dim=0)
+
+            if step == 0:
+                policy_dist = scores.exp()
+            else:
                 policy_dist = torch.cat([policy_dist, scores.exp()], dim=0)
 
-            output_mask = self.compute_output_mask(gen_seq, tgt_field.base_field.vocab.stoi[tgt_field.base_field.eos_token])
-            gen_seq = gen_seq * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
-            policy_dist = policy_dist * output_mask.to(torch.int64) + (~output_mask).to(torch.int64)
+        gen_seq_mask, policy_mask = self._compute_output_mask(gen_seq, tgt_field.base_field.vocab.stoi[tgt_field.base_field.eos_token])
+        gen_seq = gen_seq * gen_seq_mask.to(torch.int64) + (~gen_seq_mask).to(torch.int64)
+        policy_dist = policy_dist * policy_mask.to(torch.int64) + (~policy_mask).to(torch.int64)
 
-            return gen_seq, policy_dist
+        return gen_seq, policy_dist
 
-    def compute_output_mask(self, gen_seq, eos_token):
+    def _choose_tok(self, scores, epsilon):
+
+        vocab_size = scores.shape[2]
+        best_tok = torch.argmax(scores, 2).squeeze(0).numpy()
+        gen_tok = []
+
+        for tok in best_tok:
+
+            epsilon_greedy_policy = self._generate_epsilon_greedy_policy(tok, vocab_size, epsilon)
+
+            selected_tok = np.random.choice(list(range(0, vocab_size)), p=epsilon_greedy_policy)
+
+            gen_tok.append(selected_tok)
+
+        return torch.tensor(gen_tok).view(1,-1,1)
+
+    def _generate_epsilon_greedy_policy(self, best_tok, vocab_size, epsilon):
+
+        greedy_action_prob = 1 - epsilon + (epsilon / vocab_size)
+        non_greedy_action_prob = epsilon / vocab_size
+
+        policy = np.zeros(vocab_size)
+        policy += non_greedy_action_prob
+        policy[best_tok] = greedy_action_prob
+
+        return policy
+
+    def _compute_output_mask(self, gen_seq, eos_token):
         # to be used when the decoder conditions on its own output
         eos_idx = gen_seq.eq(eos_token).to(torch.int64)
         value_range = torch.arange(gen_seq.shape[0], 0, -1).to('cuda')
         output_multiplied = (eos_idx.transpose(0, 2) * value_range).transpose(0, 2)
         first_eos_idx = torch.argmax(output_multiplied, 0, keepdim=True).view(-1)
 
-        output_mask = torch.ones(gen_seq.shape[0], gen_seq.shape[1], gen_seq.shape[2]).to('cuda')
+        gen_seq_mask = torch.ones(gen_seq.shape[0], gen_seq.shape[1], gen_seq.shape[2]).to('cuda')
+        policy_mask = torch.ones(gen_seq.shape[0], gen_seq.shape[1], gen_seq.shape[2]).to('cuda')
 
         for row in range(0, gen_seq.shape[1]):
-            output_mask[first_eos_idx[row] + 1:, row] = 0
+            gen_seq_mask[first_eos_idx[row] + 1:, row] = 0
+            policy_mask[first_eos_idx[row]:, row] = 0
 
-        return output_mask.to(torch.bool)
+        return gen_seq_mask.to(torch.bool), policy_mask.to(torch.bool)
 
     def update_dropout(self, dropout):
 
@@ -236,7 +242,9 @@ class CriticQ(nn.Module):
         self.decoder = decoder
         self.output_layer = output_layer
 
-    def forward(self, tgt, gen_seq, lengths=None, bptt=False, with_align=False):
+    def forward(self, tgt, gen_seq, eos_token, lengths=None, bptt=False, with_align=False):
+
+        output_mask = self._compute_output_mask(gen_seq, eos_token)
 
         lengths = torch.tensor([tgt.shape[0]]).repeat(tgt.shape[1]).to('cuda')
 
@@ -254,7 +262,21 @@ class CriticQ(nn.Module):
 
         Q_mod = Q_all.gather(2, gen_seq.to(torch.int64))
 
-        return Q_mod, Q_all
+        return Q_mod * output_mask.to(torch.int64), Q_all * output_mask.to(torch.int64)
+
+    def _compute_output_mask(self, gen_seq, eos_token):
+
+        eos_idx = gen_seq.eq(eos_token).to(torch.int64)
+        value_range = torch.arange(gen_seq.shape[0], 0, -1).to('cuda')
+        output_multiplied = (eos_idx.transpose(0, 2) * value_range).transpose(0, 2)
+        first_eos_idx = torch.argmax(output_multiplied, 0, keepdim=True).view(-1)
+
+        output_mask = torch.ones(gen_seq.shape[0], gen_seq.shape[1], gen_seq.shape[2]).to('cuda')
+
+        for row in range(0, gen_seq.shape[1]):
+            output_mask[first_eos_idx[row]:, row] = 0
+
+        return output_mask.to(torch.bool)
 
     def update_dropout(self, dropout):
         self.encoder.update_dropout(dropout)
@@ -292,7 +314,10 @@ class CriticV(nn.Module):
         self.decoder = decoder
         self.output_layer = output_layer
 
-    def forward(self, tgt, gen_seq, lengths=None, bptt=False, with_align=False):
+    def forward(self, tgt, gen_seq, eos_token, lengths=None, bptt=False, with_align=False):
+
+        output_mask = self._compute_output_mask(gen_seq, eos_token)
+
         lengths = torch.tensor([tgt.shape[0]]).repeat(tgt.shape[1]).to('cuda')
 
         enc_state, memory_bank, lengths = self.encoder(tgt.unsqueeze(2), lengths)
@@ -307,7 +332,21 @@ class CriticV(nn.Module):
 
         V = self.output_layer(dec_out)
 
-        return V
+        return V * output_mask.to(torch.int64)
+
+    def _compute_output_mask(self, gen_seq, eos_token):
+
+        eos_idx = gen_seq.eq(eos_token).to(torch.int64)
+        value_range = torch.arange(gen_seq.shape[0], 0, -1).to('cuda')
+        output_multiplied = (eos_idx.transpose(0, 2) * value_range).transpose(0, 2)
+        first_eos_idx = torch.argmax(output_multiplied, 0, keepdim=True).view(-1)
+
+        output_mask = torch.ones(gen_seq.shape[0], gen_seq.shape[1], gen_seq.shape[2]).to('cuda')
+
+        for row in range(0, gen_seq.shape[1]):
+            output_mask[first_eos_idx[row]:, row] = 0
+
+        return output_mask.to(torch.bool)
 
     def update_dropout(self, dropout):
         self.encoder.update_dropout(dropout)
@@ -365,9 +404,9 @@ class ACNMTModel(BaseModel):
     def generator(self):
         return self.actor.generator
 
-    def forward(self, src, tgt, lengths, bptt=False, with_align=False):
+    def forward(self, src, tgt, lengths, bptt=False, with_align=False, epsilon=0):
 
-        return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode, self.tgt_field)
+        return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode, self.tgt_field, epsilon)
 
     def update_dropout(self, dropout):
         self.actor.update_dropout(dropout)
@@ -422,9 +461,9 @@ class A2CNMTModel(BaseModel):
     def generator(self):
         return self.actor.generator
 
-    def forward(self, src, tgt, lengths, bptt=False, with_align=False):
+    def forward(self, src, tgt, lengths, bptt=False, with_align=False, epsilon=0):
 
-        return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode, self.tgt_field)
+        return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode, self.tgt_field, epsilon)
 
     def update_dropout(self, dropout):
         self.actor.update_dropout(dropout)

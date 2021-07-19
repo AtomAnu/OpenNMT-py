@@ -64,6 +64,11 @@ normalization: "tokens"
 # Model
 model_task: ac
 train_mode: critic
+epsilon: 1
+epsilon_decay: 0.99999
+lambda_var: 0.25
+use_target_network: true
+target_network_update_period: 500
 encoder_type: transformer
 decoder_type: transformer
 enc_layers: 6
