@@ -176,6 +176,7 @@ class LossComputeBase(nn.Module):
                  batch,
                  output,
                  attns,
+                 target_critic=None,
                  normalization=1.0,
                  shard_size=0,
                  trunc_start=0,
@@ -212,7 +213,7 @@ class LossComputeBase(nn.Module):
         trunc_range = (trunc_start, trunc_start + trunc_size)
         shard_state = self._make_shard_state(batch, output, trunc_range, attns)
         if shard_size == 0:
-            loss, stats = self._compute_loss(batch, **shard_state)
+            loss, stats = self._compute_loss(batch, target_critic=target_critic, **shard_state)
 
             actor_loss, critic_loss = loss
 
