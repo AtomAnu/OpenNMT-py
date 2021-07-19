@@ -168,7 +168,7 @@ class Actor(nn.Module):
     def _choose_tok(self, scores, epsilon):
 
         vocab_size = scores.shape[2]
-        best_tok = torch.argmax(scores, 2).squeeze(0).numpy()
+        best_tok = torch.argmax(scores, 2).squeeze(0).cpu().numpy()
         gen_tok = []
 
         for tok in best_tok:
@@ -179,7 +179,7 @@ class Actor(nn.Module):
 
             gen_tok.append(selected_tok)
 
-        return torch.tensor(gen_tok).view(1,-1,1)
+        return torch.tensor(gen_tok).view(1,-1,1).to('cuda')
 
     def _generate_epsilon_greedy_policy(self, best_tok, vocab_size, epsilon):
 
