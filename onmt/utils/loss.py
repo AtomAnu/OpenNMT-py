@@ -496,10 +496,6 @@ class ACLossCompute(LossComputeBase):
 
             critic_loss = (critic_main_loss + self.lambda_var * var_reduction_term).sum((0,1))
 
-            print('critic main loss shape: {}'.format(critic_main_loss.shape))
-            print('var reduction shape: {}'.format(var_reduction_term.shape))
-            print('critic loss shape: {}'.format(critic_loss.shape))
-
             # critic_loss = critic_main_loss.sum((0,1))
 
             if self.model.train_mode == TrainMode.CRITIC:
