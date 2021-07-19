@@ -200,7 +200,7 @@ class Actor(nn.Module):
         first_eos_idx = torch.argmax(output_multiplied, 0, keepdim=True).view(-1)
 
         gen_seq_mask = torch.ones(gen_seq.shape[0], gen_seq.shape[1], gen_seq.shape[2]).to('cuda')
-        policy_mask = torch.ones(gen_seq.shape[0], gen_seq.shape[1], gen_seq.shape[2]).to('cuda')
+        policy_mask = torch.ones(gen_seq.shape[0]-1, gen_seq.shape[1], gen_seq.shape[2]).to('cuda')
 
         for row in range(0, gen_seq.shape[1]):
             gen_seq_mask[first_eos_idx[row] + 1:, row] = 0
