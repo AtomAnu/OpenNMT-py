@@ -492,7 +492,7 @@ class ACLossCompute(LossComputeBase):
             else:
                 critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + (policy_dist[1:].detach() * Q_all[1:]).sum(2).unsqueeze(2))) ** 2)
 
-            var_reduction_term = (Q_all[:-1] - (1/len(self.tgt_vocab)) * Q_all[:-1].sum(2).unsqueeze(2))
+            var_reduction_term = (Q_all[:-1] - (1/len(self.tgt_vocab)) * Q_all[:-1].sum(2).unsqueeze(2)).sum(2).unsqueeze(2)
 
             critic_loss = (critic_main_loss + self.lambda_var * var_reduction_term).sum((0,1))
 
