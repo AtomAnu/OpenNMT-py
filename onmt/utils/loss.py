@@ -705,6 +705,9 @@ class A2CLossCompute(LossComputeBase):
 
             critic_loss = ((V[:-1] - reward_to_go_tensor)**2).sum((0,1))
 
+            print('critic_loss: {}'.format(critic_loss))
+            print('critic_loss shape: {}'.format(critic_loss.shape))
+
             if self.model.train_mode == TrainMode.CRITIC:
 
                 stats = self._stats(critic_loss.clone(), scores, gtruth)
@@ -716,9 +719,17 @@ class A2CLossCompute(LossComputeBase):
 
                 xent_loss = self.criterion(scores, gtruth)
 
-                policy_loss = -(policy_dist_mod[:-1] * (reward_tensor + self.discount_factor * V[1:] - V[:-1])).sum()
+                policy_loss = -(policy_dist_mod[:-1] * (reward_tensor + self.discount_factor * V[1:].detach() - V[:-1].detach())).sum()
+
+                print('xent loss: {}'.format(xent_loss))
+                print('xent loss shape: {}'.format(xent_loss.shape))
+                print('policy loss: {}'.format(policy_loss))
+                print('policy loss shape: {}'.format(policy_loss.shape))
 
                 actor_loss = policy_loss + self.lambda_xent * xent_loss
+
+                print('actor loss: {}'.format(actor_loss))
+                print('actor loss shape: {}'.format(actor_loss.shape))
 
                 stats = self._stats(actor_loss.clone(), scores, gtruth)
 
