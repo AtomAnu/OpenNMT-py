@@ -545,7 +545,7 @@ class ACTrainer(object):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.use_target_network = use_target_network
-        if use_target_network: self.target_network = copy.deepcopy(model.critic).cuda()
+        self.target_network = copy.deepcopy(model.critic).cuda() if use_target_network else None
         self.target_network_update_period = target_network_update_period
         self.trunc_size = trunc_size
         self.shard_size = shard_size
@@ -725,7 +725,10 @@ class ACTrainer(object):
             self._update_epsilon()
             # Update target critic
             if self.use_target_network and i % self.target_network_update_period == 0:
+                print('Updating the target network at step: {}'.format(i))
                 self._update_target_network()
+
+            print('Current Epsilon: {}'.format(self.epsilon))
 
         if self.model_saver is not None:
             self.model_saver.save(step, moving_average=self.moving_average)

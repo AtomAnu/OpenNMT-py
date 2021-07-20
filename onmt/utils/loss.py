@@ -92,6 +92,7 @@ def build_loss_compute(model, tgt_field, opt, train=True):
                 criterion,
                 loss_gen,
                 model,
+                opt.discount_factor,
                 opt.lambda_xent,
                 opt.lambda_var,
                 tgt_field.vocab,
@@ -103,6 +104,7 @@ def build_loss_compute(model, tgt_field, opt, train=True):
                 criterion,
                 loss_gen,
                 model,
+                opt.discount_factor,
                 opt.lambda_xent,
                 tgt_field.vocab,
                 eos_idx,
@@ -430,13 +432,14 @@ class ACLossCompute(LossComputeBase):
 
     Implement loss compatible with coverage and alignement shards
     """
-    def __init__(self, criterion, generator, model, lambda_xent, lambda_var, tgt_vocab, eos_idx, unk_idx, normalization="sents",
+    def __init__(self, criterion, generator, model, discount_factor, lambda_xent, lambda_var, tgt_vocab, eos_idx, unk_idx, normalization="sents",
                  lambda_coverage=0.0, lambda_align=0.0, tgt_shift_index=0):
         super(ACLossCompute, self).__init__(criterion, generator)
         self.lambda_coverage = lambda_coverage
         self.lambda_align = lambda_align
         self.tgt_shift_index = tgt_shift_index
         self.model = model
+        self.discount_factor = discount_factor
         self.lambda_xent = lambda_xent
         self.lambda_var = lambda_var
         self.tgt_vocab = tgt_vocab
@@ -488,9 +491,9 @@ class ACLossCompute(LossComputeBase):
             if target_critic is not None:
                 with torch.no_grad():
                     target_Q_mod, target_Q_all = target_critic(target, output, self.eos_idx)
-                critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + (policy_dist[1:].detach() * target_Q_all[1:]).sum(2).unsqueeze(2)))**2)
+                critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + self.discount_factor * (policy_dist[1:].detach() * target_Q_all[1:]).sum(2).unsqueeze(2)))**2)
             else:
-                critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + (policy_dist[1:].detach() * Q_all[1:]).sum(2).unsqueeze(2))) ** 2)
+                critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + self.discount_factor * (policy_dist[1:].detach() * Q_all[1:]).sum(2).unsqueeze(2))) ** 2)
 
             var_reduction_term = (Q_all[:-1] - (1/len(self.tgt_vocab)) * Q_all[:-1].sum(2).unsqueeze(2)).sum(2).unsqueeze(2)
 
@@ -507,8 +510,9 @@ class ACLossCompute(LossComputeBase):
 
                 xent_loss = self.criterion(scores, gtruth)
 
-                # actor_loss = -(policy_dist * Q_all.detach()).sum() + self.lambda_xent * xent_loss
-                actor_loss = xent_loss
+                policy_loss = -(policy_dist[:-1] * Q_all[:-1].detach()).sum()
+
+                actor_loss = policy_loss + self.lambda_xent * xent_loss
 
                 stats = self._stats(actor_loss.clone(), scores, gtruth)
 
@@ -649,19 +653,20 @@ class A2CLossCompute(LossComputeBase):
 
     Implement loss compatible with coverage and alignement shards
     """
-    def __init__(self, criterion, generator, model, lambda_xent, tgt_vocab, eos_idx, unk_idx, normalization="sents",
+    def __init__(self, criterion, generator, model, discount_factor, lambda_xent, tgt_vocab, eos_idx, unk_idx, normalization="sents",
                  lambda_coverage=0.0, lambda_align=0.0, tgt_shift_index=0):
         super(A2CLossCompute, self).__init__(criterion, generator)
         self.lambda_coverage = lambda_coverage
         self.lambda_align = lambda_align
         self.tgt_shift_index = tgt_shift_index
         self.model = model
+        self.discount_factor = discount_factor
         self.lambda_xent = lambda_xent
         self.tgt_vocab = tgt_vocab
         self.eos_idx = eos_idx
         self.unk_idx = unk_idx
 
-    def _compute_loss(self, batch, output, target, std_attn=None,
+    def _compute_loss(self, batch, output, target, std_attn=None, target_critic=None,
                       coverage_attn=None, align_head=None, ref_align=None):
 
         if self.model.train_mode == TrainMode.ACTOR:
@@ -695,10 +700,10 @@ class A2CLossCompute(LossComputeBase):
             scores = self._bottle(scores)
             gtruth = target.view(-1)
 
-            reward_tensor = self._compute_reward(output, target, bleu_add_1)
+            reward_tensor = self._compute_reward(output[1:], target[1:], bleu_add_1)
             reward_to_go_tensor = self._compute_reward_to_go(reward_tensor)
 
-            critic_loss = ((V - reward_to_go_tensor)**2).sum((0,1))
+            critic_loss = ((V[:-1] - reward_to_go_tensor)**2).sum((0,1))
 
             if self.model.train_mode == TrainMode.CRITIC:
 
@@ -707,7 +712,13 @@ class A2CLossCompute(LossComputeBase):
                 return (None, critic_loss), stats
             else:
 
-                actor_loss = -(policy_dist * Q_all).sum()
+                policy_dist_mod = policy_dist.gather(2, output.to(torch.int64))
+
+                xent_loss = self.criterion(scores, gtruth)
+
+                policy_loss = -(policy_dist_mod[:-1] * (reward_tensor + self.discount_factor * V[1:] - V[:-1])).sum()
+
+                actor_loss = policy_loss + self.lambda_xent * xent_loss
 
                 stats = self._stats(actor_loss.clone(), scores, gtruth)
 
@@ -755,13 +766,13 @@ class A2CLossCompute(LossComputeBase):
 
         return reward_tensor
 
-    def _compute_reward_to_go(self, reward_tensor, discount_factor=1):
+    def _compute_reward_to_go(self, reward_tensor):
 
         reward_to_go_tensor = reward_tensor
 
-        for row in range(reward_tensor.shape[0]-1, 0):
+        for row in range(reward_tensor.shape[0]-2, -1, -1):
 
-            reward_to_go_tensor[row, :, :] += discount_factor * reward_to_go_tensor[row + 1, :, :]
+            reward_to_go_tensor[row, :, :] += self.discount_factor * reward_to_go_tensor[row + 1, :, :]
 
         return reward_to_go_tensor
 

@@ -24,13 +24,13 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/OpenSubtitles-v2016/critic_pretraining/model
-train_from: data/OpenSubtitles-v2016/actor_pretraining/model_step_100000.pt
+save_model: data/OpenSubtitles-v2016/joint_training/a2c/model
+train_from: data/OpenSubtitles-v2016/critic_pretraining/a2c/model_step_140000.pt
 keep_checkpoint: 50
 save_checkpoint_steps: 5000
 average_decay: 0.0005
 seed: 1234
-report_every: 100
+report_every: 1
 train_steps: 200000
 valid_steps: 5000
 
@@ -62,13 +62,13 @@ param_init_glorot: true
 normalization: "tokens"
 
 # Model
-model_task: ac
-train_mode: critic
+model_task: a2c
+train_mode: ac
 discount_factor: 0.5
-epsilon: 1
+epsilon: 0.5
 epsilon_decay: 0.99999
 lambda_var: 0.25
-use_target_network: true
+use_target_network: false
 target_network_update_period: 500
 encoder_type: transformer
 decoder_type: transformer
@@ -84,4 +84,4 @@ attention_dropout: [0.1]
 position_encoding: true
 
 # Logging
-log_file: logs/ac_transformer.txt
+log_file: logs/a2c/critic_pretraining.txt

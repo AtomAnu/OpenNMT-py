@@ -264,6 +264,12 @@ def model_opts(parser):
         choices=[TrainMode.ACTOR, TrainMode.CRITIC, TrainMode.AC],
         help="Pre-training/Training mode for Actor-Critic models (actor, critic or ac)")
     group.add(
+        "-discount_factor",
+        "--discount_factor",
+        type=float,
+        default=1.0,
+        help="Discount factor used in return calculation (0 - 1)")
+    group.add(
         "-epsilon",
         "--epsilon",
         type=float,
