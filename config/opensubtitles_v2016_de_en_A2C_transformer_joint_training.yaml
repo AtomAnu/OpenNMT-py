@@ -25,13 +25,13 @@ data:
 
 # General opts
 save_model: data/OpenSubtitles-v2016/joint_training/a2c/model
-train_from: data/OpenSubtitles-v2016/critic_pretraining/a2c/model_step_140000.pt
+train_from: data/OpenSubtitles-v2016/critic_pretraining/a2c/model_step_145000.pt
 keep_checkpoint: 50
 save_checkpoint_steps: 5000
 average_decay: 0.0005
 seed: 1234
 report_every: 1
-train_steps: 200000
+train_steps: 300000
 valid_steps: 5000
 
 # Batching
