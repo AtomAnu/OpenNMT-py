@@ -1,0 +1,5 @@
+model: data/OpenSubtitles-v2016/joint_training/a2c/model
+src: data/iwslt2014-test/iwslt14-test-src-processed.txt
+output:
+beam_size:
+ban_unk_token:

@@ -84,4 +84,4 @@ attention_dropout: [0.1]
 position_encoding: true
 
 # Logging
-log_file: logs/a2c/critic_pretraining.txt
+log_file: logs/a2c/joint_training.txt
