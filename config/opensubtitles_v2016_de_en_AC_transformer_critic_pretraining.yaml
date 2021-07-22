@@ -27,12 +27,12 @@ data:
 save_model: data/OpenSubtitles-v2016/critic_pretraining/model
 train_from: data/OpenSubtitles-v2016/actor_pretraining/model_step_100000.pt
 keep_checkpoint: 50
-save_checkpoint_steps: 5000
+save_checkpoint_steps: 1500
 average_decay: 0.0005
 seed: 1234
-report_every: 100
+report_every: 1
 train_steps: 200000
-valid_steps: 5000
+valid_steps: 3000
 
 # Batching
 queue_size: 1024
