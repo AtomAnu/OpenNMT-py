@@ -451,16 +451,10 @@ class ACLossCompute(LossComputeBase):
 
         if self.model.train_mode == TrainMode.ACTOR:
 
-            print('output shape: {}'.format(output.shape))
-            print('target shape: {}'.format(target.shape))
-
             bottled_output = self._bottle(output)
 
             scores = self.generator(bottled_output)
             gtruth = target.view(-1)
-
-            print('scores shape: {}'.format(scores.shape))
-            print('gtruth shape: {}'.format(gtruth.shape))
 
             loss = self.criterion(scores, gtruth)
             if self.lambda_coverage != 0.0:
