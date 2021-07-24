@@ -557,6 +557,9 @@ class ACLossCompute(LossComputeBase):
 
             reward_tensor[:hyp_row, col] = torch.tensor(reward_list)
 
+        # reward shaping
+        reward_tensor[1:] -= reward_tensor[:-1]
+
         reward_tensor = reward_tensor.unsqueeze(2)
 
         return reward_tensor
@@ -761,6 +764,9 @@ class A2CLossCompute(LossComputeBase):
                         hyp_row += 1
 
             reward_tensor[:hyp_row, col] = torch.tensor(reward_list)
+
+        # reward shaping
+        reward_tensor[1:] -= reward_tensor[:-1]
 
         reward_tensor = reward_tensor.unsqueeze(2)
 

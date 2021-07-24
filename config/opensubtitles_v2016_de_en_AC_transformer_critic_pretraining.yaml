@@ -24,8 +24,8 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/OpenSubtitles-v2016/critic_pretraining/model
-train_from: data/OpenSubtitles-v2016/actor_pretraining/model_step_100000.pt
+save_model: data/OpenSubtitles-v2016/critic_pretraining/ac/model
+train_from: data/OpenSubtitles-v2016/actor_pretraining/ac/model_step_100000.pt
 keep_checkpoint: 50
 save_checkpoint_steps: 1500
 average_decay: 0.0005
@@ -84,4 +84,4 @@ attention_dropout: [0.1]
 position_encoding: true
 
 # Logging
-log_file: logs/ac_transformer.txt
+log_file: logs/ac/critic_pretraining.txt
