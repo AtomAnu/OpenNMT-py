@@ -10,5 +10,5 @@ TERM=vt100 # or TERM=xterm
 uptime
 conda activate a3c
 cd /vol/bitbucket/aa8920/OpenNMT-py
-onmt_train -config config/multi-gpu/opensubtitles_v2016_de_en_A2C_transformer_actor_pretraining_2_GPU.yaml
+onmt_train -config config/multi-gpu/opensubtitles_v2016_de_en_A2C_transformer_critic_pretraining_2_GPU.yaml
 conda deactivate
