@@ -1,0 +1,7 @@
+model: data/OpenSubtitles-v2016/joint_training/a2c-alt/model_step_145600.pt
+src: data/OpenSubtitles-v2016/randomised_test_set_5k/src.txt
+output: data/OpenSubtitles-v2016/randomised_test_set_5k/A2C_145600_topk.txt
+beam_size: 10
+ban_unk_token: true
+random_sampling_topk: 10
+random_sampling_temp: 0.4
