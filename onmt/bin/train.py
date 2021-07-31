@@ -117,12 +117,12 @@ def train(opt):
 
         # Build optimizer.
         if opt.train_from and checkpoint is not None:
-            actor_optim = Optimizer.from_opt(model.actor, opt, checkpoint=checkpoint, ac_optim_opt='actor')
-            critic_optim = Optimizer.from_opt(model.critic, opt, checkpoint=checkpoint, ac_optim_opt='critic')
+            actor_optim = Optimizer.from_opt(global_a2c.actor, opt, checkpoint=checkpoint, ac_optim_opt='actor')
+            critic_optim = Optimizer.from_opt(global_a2c.critic, opt, checkpoint=checkpoint, ac_optim_opt='critic')
             optim = (actor_optim, critic_optim)
         else:
-            actor_optim = Optimizer.from_opt(model.actor, opt, checkpoint=checkpoint)
-            critic_optim = Optimizer.from_opt(model.critic, opt, checkpoint=checkpoint)
+            actor_optim = Optimizer.from_opt(global_a2c.actor, opt, checkpoint=checkpoint)
+            critic_optim = Optimizer.from_opt(global_a2c.critic, opt, checkpoint=checkpoint)
             optim = (actor_optim, critic_optim)
 
         train_process = partial(
