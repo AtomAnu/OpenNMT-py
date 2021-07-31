@@ -55,6 +55,11 @@ def build_torch_optimizer(model, opt):
             lr=opt.learning_rate,
             betas=betas,
             eps=1e-9)
+    elif opt.optim == 'sharedadam':
+        optimizer = SharedAdam(
+                    params,
+                    lr=opt.learning_rate,
+                    betas=betas)
     elif opt.optim == 'sparseadam':
         dense = []
         sparse = []
@@ -550,7 +555,7 @@ class AdaFactor(torch.optim.Optimizer):
 
 class SharedAdam(torch.optim.Adam):
 
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0):
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-9, weight_decay=0):
         super(SharedAdam, self).__init__(params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
 
         for group in self.param_groups:
