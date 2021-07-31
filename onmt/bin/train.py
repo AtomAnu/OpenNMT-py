@@ -11,7 +11,7 @@ from onmt.modules.embeddings import prepare_pretrained_embeddings
 from onmt.utils.logging import init_logger, logger
 
 from onmt.models.model_saver import load_checkpoint
-from onmt.train_single import main as single_main, _build_train_iter
+from onmt.train_single import main as single_main, a3c_main, _get_model_opts, _build_train_iter
 
 from onmt.utils.parse import ArgumentParser
 from onmt.opts import train_opts
@@ -20,6 +20,9 @@ from onmt.inputters.fields import build_dynamic_fields, save_fields, \
     load_fields
 from onmt.transforms import make_transforms, save_transforms, \
     get_specials, get_transforms_cls
+from onmt.model_builder import build_model
+from onmt.utils.optimizers import Optimizer
+from onmt.constants import ModelTask
 
 # Set sharing strategy manually instead of default based on the OS.
 torch.multiprocessing.set_sharing_strategy('file_system')
@@ -104,11 +107,38 @@ def train(opt):
     set_random_seed(opt.seed, False)
 
     checkpoint, fields, transforms_cls = _init_train(opt)
-    train_process = partial(
-        single_main,
-        fields=fields,
-        transforms_cls=transforms_cls,
-        checkpoint=checkpoint)
+
+    if opt.model_task == ModelTask.A3C:
+        model_opt = _get_model_opts(opt, checkpoint=checkpoint)
+
+        # Build a global A2C model.
+        global_a2c = build_model(model_opt, opt, fields, checkpoint)
+        global_a2c.share_memory()
+
+        # Build optimizer.
+        if opt.train_from and checkpoint is not None:
+            actor_optim = Optimizer.from_opt(model.actor, opt, checkpoint=checkpoint, ac_optim_opt='actor')
+            critic_optim = Optimizer.from_opt(model.critic, opt, checkpoint=checkpoint, ac_optim_opt='critic')
+            optim = (actor_optim, critic_optim)
+        else:
+            actor_optim = Optimizer.from_opt(model.actor, opt, checkpoint=checkpoint)
+            critic_optim = Optimizer.from_opt(model.critic, opt, checkpoint=checkpoint)
+            optim = (actor_optim, critic_optim)
+
+        train_process = partial(
+            a3c_main,
+            global_model=global_a2c,
+            optim=optim,
+            model_opt=model_opt,
+            fields=fields,
+            transforms_cls=transforms_cls,
+            checkpoint=checkpoint)
+    else:
+        train_process = partial(
+            single_main,
+            fields=fields,
+            transforms_cls=transforms_cls,
+            checkpoint=checkpoint)
 
     nb_gpu = len(opt.gpu_ranks)
 

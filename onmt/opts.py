@@ -3,7 +3,7 @@ import configargparse
 
 from onmt.models.sru import CheckSRU
 from onmt.transforms import AVAILABLE_TRANSFORMS
-from onmt.constants import ModelTask, TrainMode
+from onmt.constants import ModelTask, TrainMode, PolicyStrategy
 from onmt.modules.position_ffn import ACTIVATION_FUNCTIONS
 from onmt.modules.position_ffn import ActivationFunction
 
@@ -269,6 +269,28 @@ def model_opts(parser):
         type=float,
         default=1.0,
         help="Discount factor used in return calculation (0 - 1)")
+    group.add(
+        "-policy_strategy",
+        "--policy_strategy",
+        type=str,
+        default=[PolicyStrategy.Categorical],
+        nargs="+",
+        choices=[PolicyStrategy.Categorical, PolicyStrategy.Epsilon, PolicyStrategy.Greedy],
+        help="Choose the policy sampling strategy (categorical, epsilon or greedy)")
+    group.add(
+        "-policy_topk_sampling",
+        "--policy_topk_sampling",
+        type=int,
+        default=[-1],
+        nargs="+",
+        help="Value of k for top-k sampling (-1 to do sampling from the full distribution)")
+    group.add(
+        "-policy_sampling_temperature",
+        "--policy_sampling_temperature",
+        type=float,
+        default=[1.0],
+        nargs="+",
+        help="Value of temperature for policy sampling (1 for no temperature effect)")
     group.add(
         "-epsilon",
         "--epsilon",
@@ -591,7 +613,7 @@ def _add_train_general_opts(parser):
               nargs="*", default=None,
               help='Criteria to use for early stopping.')
     group.add('--optim', '-optim', default='sgd',
-              choices=['sgd', 'adagrad', 'adadelta', 'adam',
+              choices=['sgd', 'adagrad', 'adadelta', 'adam', 'sharedadam',
                        'sparseadam', 'adafactor', 'fusedadam'],
               help="Optimization method.")
     group.add('--adagrad_accumulator_init', '-adagrad_accumulator_init',

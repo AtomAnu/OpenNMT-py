@@ -1,7 +1,8 @@
 """ Onmt NMT Model base class definition """
 import torch
 import torch.nn as nn
-from onmt.constants import TrainMode
+from torch.distributions import Categorical
+from onmt.constants import TrainMode, PolicyStrategy
 import numpy as np
 
 class BaseModel(nn.Module):
@@ -111,7 +112,8 @@ class Actor(nn.Module):
         self.encoder = encoder
         self.decoder = decoder
 
-    def forward(self, src, tgt, lengths, bptt=False, with_align=False, train_mode=TrainMode.ACTOR, tgt_field=None, epsilon=0):
+    def forward(self, src, tgt, lengths, bptt=False, with_align=False, train_mode=TrainMode.ACTOR, tgt_field=None,
+                policy_strategy=PolicyStrategy.Categorical, epsilon=0):
 
         if train_mode == TrainMode.ACTOR:
             enc_state, memory_bank, lengths = self.encoder(src, lengths)
@@ -127,12 +129,13 @@ class Actor(nn.Module):
             return dec_out, attns
         elif train_mode == TrainMode.CRITIC:
             with torch.no_grad():
-                return self._step_wise_forward(src, tgt, lengths, bptt, with_align, tgt_field, epsilon)
+                return self._step_wise_forward(src, tgt, lengths, bptt, with_align, tgt_field, policy_strategy, epsilon)
         else:
             with torch.enable_grad():
-                return self._step_wise_forward(src, tgt, lengths, bptt, with_align, tgt_field, epsilon)
+                return self._step_wise_forward(src, tgt, lengths, bptt, with_align, tgt_field, policy_strategy, epsilon)
 
-    def _step_wise_forward(self, src, tgt, lengths, bptt=False, with_align=False, tgt_field=None, epsilon=0):
+    def _step_wise_forward(self, src, tgt, lengths, bptt=False, with_align=False, tgt_field=None,
+                           policy_strategy=PolicyStrategy.Categorical, epsilon=0):
 
         enc_state, memory_bank, lengths = self.encoder(src, lengths)
 
@@ -151,7 +154,7 @@ class Actor(nn.Module):
 
             scores = self.generator(dec_out)
             # gen_tok = torch.argmax(scores, 2).unsqueeze(2)
-            gen_tok = self._choose_tok(scores, epsilon)
+            gen_tok = self._choose_tok(scores, epsilon, policy_strategy)
             gen_seq = torch.cat([gen_seq, gen_tok], dim=0)
 
             if step == 0:
@@ -165,18 +168,37 @@ class Actor(nn.Module):
 
         return gen_seq, policy_dist
 
-    def _choose_tok(self, scores, epsilon):
+    def _choose_tok(self, scores, epsilon, policy_strategy=PolicyStrategy.Categorical):
 
-        vocab_size = scores.shape[2]
-        best_tok = torch.argmax(scores, 2).squeeze(0).cpu().numpy()
+        if policy_strategy == PolicyStrategy.Greedy:
+            return torch.argmax(scores, 2).unsqueeze(2)
+        elif policy_strategy == PolicyStrategy.Categorical:
+            return self._categorical_sampling(scores)
+        else:
+            vocab_size = scores.shape[2]
+            best_tok = torch.argmax(scores, 2).squeeze(0).cpu().numpy()
+            gen_tok = []
+
+            for tok in best_tok:
+
+                epsilon_greedy_policy = self._generate_epsilon_greedy_policy(tok, vocab_size, epsilon)
+
+                selected_tok = np.random.choice(list(range(0, vocab_size)), p=epsilon_greedy_policy)
+
+                gen_tok.append(selected_tok)
+
+            return torch.tensor(gen_tok).view(1,-1,1).to('cuda')
+
+    def _categorical_sampling(self, scores):
+
+        # scores: [1 x bs x vocab_size]
+        probs = scores.exp()
+
         gen_tok = []
+        for prob in probs[0]:
 
-        for tok in best_tok:
-
-            epsilon_greedy_policy = self._generate_epsilon_greedy_policy(tok, vocab_size, epsilon)
-
-            selected_tok = np.random.choice(list(range(0, vocab_size)), p=epsilon_greedy_policy)
-
+            dist = Categorical(prob)
+            selected_tok = dist.sample().numpy()[0]
             gen_tok.append(selected_tok)
 
         return torch.tensor(gen_tok).view(1,-1,1).to('cuda')
@@ -461,9 +483,9 @@ class A2CNMTModel(BaseModel):
     def generator(self):
         return self.actor.generator
 
-    def forward(self, src, tgt, lengths, bptt=False, with_align=False, epsilon=0):
+    def forward(self, src, tgt, lengths, bptt=False, with_align=False, policy_strategy=PolicyStrategy.Categorical, epsilon=0):
 
-        return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode, self.tgt_field, epsilon)
+        return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode, self.tgt_field, policy_strategy, epsilon)
 
     def update_dropout(self, dropout):
         self.actor.update_dropout(dropout)

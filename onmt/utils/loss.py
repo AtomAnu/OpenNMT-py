@@ -99,7 +99,7 @@ def build_loss_compute(model, tgt_field, opt, train=True):
                 eos_idx,
                 unk_idx
             )
-        elif opt.model_task == ModelTask.A2C:
+        elif opt.model_task == ModelTask.A2C or opt.model_task == ModelTask.A3C:
             compute = A2CLossCompute(
                 criterion,
                 loss_gen,

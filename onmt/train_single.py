@@ -127,3 +127,61 @@ def main(opt, fields, transforms_cls, checkpoint, device_id,
 
     if trainer.report_manager.tensorboard_writer is not None:
         trainer.report_manager.tensorboard_writer.close()
+
+def a3c_main(global_model, optim, model_opt, opt, fields, transforms_cls, checkpoint, device_id,
+         batch_queue=None, semaphore=None):
+    """Start training on `device_id`."""
+    # NOTE: It's important that ``opt`` has been validated and updated
+    # at this point.
+    configure_process(opt, device_id)
+    init_logger(opt.log_file)
+
+    # Build a local A2C model.
+    model = build_model(model_opt, opt, fields, checkpoint)
+    model.count_parameters(log=logger.info)
+
+    # Build model saver
+    model_saver = build_model_saver(model_opt, opt, model, fields, optim)
+
+    trainer = build_trainer(
+        opt, device_id, model, fields, optim, model_saver=model_saver, global_model=global_model)
+
+    if batch_queue is None:
+        _train_iter = _build_train_iter(opt, fields, transforms_cls)
+        train_iter = IterOnDevice(_train_iter, device_id)
+    else:
+        assert semaphore is not None, \
+            "Using batch_queue requires semaphore as well"
+
+        def _train_iter():
+            while True:
+                batch = batch_queue.get()
+                semaphore.release()
+                # Move batch to specified device
+                IterOnDevice.batch_to_device(batch, device_id)
+                yield batch
+
+        train_iter = _train_iter()
+
+    valid_iter = _build_valid_iter(opt, fields, transforms_cls)
+    if valid_iter is not None:
+        valid_iter = IterOnDevice(valid_iter, device_id)
+
+    if len(opt.gpu_ranks):
+        logger.info('Starting training on GPU: %s' % opt.gpu_ranks)
+    else:
+        logger.info('Starting training on CPU, could be very slow')
+    train_steps = opt.train_steps
+    if opt.single_pass and train_steps > 0:
+        logger.warning("Option single_pass is enabled, ignoring train_steps.")
+        train_steps = 0
+
+    trainer.train(
+        train_iter,
+        train_steps,
+        save_checkpoint_steps=opt.save_checkpoint_steps,
+        valid_iter=valid_iter,
+        valid_steps=opt.valid_steps)
+
+    if trainer.report_manager.tensorboard_writer is not None:
+        trainer.report_manager.tensorboard_writer.close()

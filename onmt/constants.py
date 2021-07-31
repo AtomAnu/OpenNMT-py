@@ -35,3 +35,8 @@ class TrainMode:
     ACTOR = 'actor'
     CRITIC = 'critic'
     AC = 'ac'
+
+class PolicyStrategy:
+    Categorical = 'categorical'
+    Epsilon = 'epsilon'
+    Greedy = 'greedy'
