@@ -197,8 +197,12 @@ class Actor(nn.Module):
         gen_tok = []
         for prob in probs[0]:
 
+            print("Prob shape: {}".format(prob.shape))
+
             dist = Categorical(prob)
             selected_tok = dist.sample().cpu().numpy()
+            print("Selected tok shape: {}".format(selected_tok.shape))
+
             gen_tok.append(selected_tok)
 
         return torch.tensor(gen_tok).view(1,-1,1).to('cuda')
