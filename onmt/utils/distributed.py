@@ -196,7 +196,7 @@ def batch_producer(generator_to_serve, queue, semaphore, opt, device_id):
         b = next_batch()
 
 
-def consumer(process_fn, opt, device_id, error_queue, batch_queue, semaphore, global_model=None):  # noqa: E501
+def consumer(process_fn, opt, device_id, error_queue, batch_queue, semaphore):  # noqa: E501
     """Run `process_fn` on `device_id` with data from `batch_queue`."""
     try:
         gpu_rank = multi_init(opt, device_id)
