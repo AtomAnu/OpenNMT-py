@@ -198,7 +198,7 @@ class Actor(nn.Module):
         for prob in probs[0]:
 
             dist = Categorical(prob)
-            selected_tok = dist.sample().numpy()[0]
+            selected_tok = dist.sample().cpu().numpy()[0]
             gen_tok.append(selected_tok)
 
         return torch.tensor(gen_tok).view(1,-1,1).to('cuda')
