@@ -369,7 +369,7 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
         model.load_state_dict(checkpoint['model'], strict=False)
         generator.load_state_dict(checkpoint['generator'], strict=False)
 
-    if model_opt.model_task != ModelTask.AC and model_opt.model_task != ModelTask.A2C:
+    if model_opt.model_task not in [ModelTask.AC, ModelTask.A2C, ModelTask.A3C]:
         model.generator = generator
     else:
         model.actor.generator = generator
