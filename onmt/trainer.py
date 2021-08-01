@@ -1327,12 +1327,12 @@ class A3CTrainer(object):
                             self.model.actor.parameters(),
                             self.global_model.actor.parameters()):
 
-                        global_actor_param._grad = local_actor_param.grad
+                        global_actor_param._grad = local_actor_param.grad.to(global_actor_param.device)
 
                     for local_critic_param, global_critic_param in zip(
                             self.model.critic.parameters(),
                             self.global_model.critic.parameters()):
-                        global_critic_param._grad = local_critic_param.grad
+                        global_critic_param._grad = local_critic_param.grad.to(global_critic_param.device)
 
                     self.actor_optim.step()
                     self.critic_optim.step()
@@ -1353,12 +1353,12 @@ class A3CTrainer(object):
             for local_actor_param, global_actor_param in zip(
                     self.model.actor.parameters(),
                     self.global_model.actor.parameters()):
-                global_actor_param._grad = local_actor_param.grad
+                global_actor_param._grad = local_actor_param.grad.to(global_actor_param.device)
 
             for local_critic_param, global_critic_param in zip(
                     self.model.critic.parameters(),
                     self.global_model.critic.parameters()):
-                global_critic_param._grad = local_critic_param.grad
+                global_critic_param._grad = local_critic_param.grad.to(global_critic_param.device)
 
             self.actor_optim.step()
             self.critic_optim.step()
