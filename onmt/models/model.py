@@ -192,15 +192,15 @@ class Actor(nn.Module):
     def _categorical_sampling(self, scores):
 
         # scores: [1 x bs x vocab_size]
-        probs = scores.exp()
+        # probs = scores.exp()
 
         gen_tok = []
-        for prob in probs[0]:
+        for logits in scores[0]:
 
-            if not torch.isclose(prob.sum(), torch.tensor(1.00000), atol=1e-5):
-                print('prob sum: {}'.format(prob.sum()))
-                print('prob: {}'.format(prob))
-            dist = Categorical(prob)
+            # if not torch.isclose(prob.sum(), torch.tensor(1.00000), atol=1e-5):
+            #     print('prob sum: {}'.format(prob.sum()))
+            #     print('prob: {}'.format(prob))
+            dist = Categorical(logits=logits)
             selected_tok = dist.sample().cpu().numpy().item()
             gen_tok.append(selected_tok)
 
