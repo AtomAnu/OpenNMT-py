@@ -199,6 +199,7 @@ class Actor(nn.Module):
 
             print('prob shape: {}'.format(prob.shape))
             if prob.sum() != torch.tensor(1.):
+                print('prob sum: {}'.format(prob.sum()))
                 print('prob: {}'.format(prob))
             dist = Categorical(prob)
             selected_tok = dist.sample().cpu().numpy().item()
