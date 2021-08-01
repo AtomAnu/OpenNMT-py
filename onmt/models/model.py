@@ -197,8 +197,7 @@ class Actor(nn.Module):
         gen_tok = []
         for prob in probs[0]:
 
-            print('prob shape: {}'.format(prob.shape))
-            if prob.sum() != torch.tensor(1.):
+            if not torch.isclose(prob.sum(), torch.tensor(1.00000), atol=1e-5):
                 print('prob sum: {}'.format(prob.sum()))
                 print('prob: {}'.format(prob))
             dist = Categorical(prob)
