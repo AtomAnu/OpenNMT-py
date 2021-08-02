@@ -43,7 +43,7 @@ world_size: 2
 gpu_ranks: [0,1]
 batch_type: "tokens"
 batch_size: 500
-valid_batch_size: 500
+valid_batch_size: 8
 batch_size_multiple: 1
 max_generator_batches: 0
 accum_count: [25]
@@ -52,7 +52,7 @@ accum_steps: [0]
 # Optimization
 model_dtype: "fp32"
 optim: "sharedadam"
-learning_rate: 2
+learning_rate: 0.001
 warmup_steps: 6000
 decay_method: "noam"
 adam_beta2: 0.998
