@@ -765,6 +765,9 @@ class A2CLossCompute(LossComputeBase):
 
             reward_tensor[:hyp_row, col] = torch.tensor(reward_list)
 
+        print('Ref: {}'.format(ref))
+        print('hyp: {}'.format(hyp))
+
         # reward shaping
         reward_tensor[1:] -= reward_tensor[:-1].clone()
 
