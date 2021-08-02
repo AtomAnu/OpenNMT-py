@@ -141,7 +141,7 @@ def a3c_main(global_model, optim, model_opt, opt, fields, transforms_cls, checkp
     model.count_parameters(log=logger.info)
 
     # Build model saver
-    model_saver = build_model_saver(model_opt, opt, model, fields, optim)
+    model_saver = build_model_saver(model_opt, opt, global_model, fields, optim)
 
     trainer = build_trainer(
         opt, device_id, model, fields, optim, model_saver=model_saver, global_model=global_model)
