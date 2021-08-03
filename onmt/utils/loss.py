@@ -215,6 +215,8 @@ class LossComputeBase(nn.Module):
         trunc_range = (trunc_start, trunc_start + trunc_size)
         shard_state = self._make_shard_state(batch, output, trunc_range, attns)
         if shard_size == 0:
+            # TODO support original OpenNMT pipeline
+
             loss, stats = self._compute_loss(batch, target_critic=target_critic, **shard_state)
 
             actor_loss, critic_loss = loss
