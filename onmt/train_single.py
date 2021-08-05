@@ -13,7 +13,7 @@ from onmt.utils.parse import ArgumentParser
 
 from onmt.inputters.dynamic_iterator import build_dynamic_dataset_iter
 from onmt.constants import ModelTask
-
+from onmt.modules.rewards import UnsuperReward
 
 def configure_process(opt, device_id):
     if device_id >= 0:
@@ -142,6 +142,8 @@ def a3c_main(global_model, optim, unsuper_reward, model_opt, opt, fields, transf
 
     # Build model saver
     model_saver = build_model_saver(model_opt, opt, global_model, fields, optim)
+
+    unsuper_reward = UnsuperReward(fields, opt.w_fluency, opt.w_tlss, opt.w_slss, device_id, opt.norm_unsuper_reward)
 
     trainer = build_trainer(
         opt, device_id, model, fields, optim,

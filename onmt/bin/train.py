@@ -130,7 +130,8 @@ def train(opt):
             critic_optim = Optimizer.from_opt(global_a2c.critic, opt, checkpoint=checkpoint)
             optim = (actor_optim, critic_optim)
 
-        unsuper_reward = UnsuperReward(fields, opt.w_fluency, opt.w_tlss, opt.w_slss, global_gpu_id, opt.norm_unsuper_reward)
+        # unsuper_reward = UnsuperReward(fields, opt.w_fluency, opt.w_tlss, opt.w_slss, global_gpu_id, opt.norm_unsuper_reward)
+        unsuper_reward = None
 
         train_process = partial(
             a3c_main,
