@@ -6,6 +6,7 @@ from pytorch_pretrained_bert import OpenAIGPTTokenizer, OpenAIGPTLMHeadModel
 from datasets import load_metric
 from sentence_transformers import SentenceTransformer
 from torch.nn import CosineSimilarity
+import math
 
 def bleu_add_1(hyp, ref):
 
@@ -170,7 +171,8 @@ class UnsuperReward():
 
         with torch.no_grad():
             loss = self.GPTLM(ids_tensor, lm_labels=ids_tensor)
-            print('LM ppl: {}'.format(loss))
+            if math.isnan(loss.item()):
+                return 0.0
             fluency = 1 / np.exp(loss.item())
         return fluency
 
