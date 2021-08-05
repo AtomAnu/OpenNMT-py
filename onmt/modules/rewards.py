@@ -201,7 +201,7 @@ class UnsuperReward():
 
         if self.normalise:
             return self._normalise(torch.tensor(hyp_fluency_list + [ref_fluency]).to(self.device))
-        else
+        else:
             return torch.tensor(hyp_fluency_list).to(self.device)
 
     def _compute_token_level_semantic_similarity(self, src_list, sent_list):
