@@ -129,7 +129,7 @@ class UnsuperReward():
             if bool(self.w_slss):
                 # SLSS calculation
                 slss_scores = self._compute_sentence_level_semantic_similarity([src]*len(sent_list), sent_list)
-            else
+            else:
                 slss_scores = 0
 
             # TODO remove the debugger below
