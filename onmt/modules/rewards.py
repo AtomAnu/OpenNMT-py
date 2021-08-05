@@ -119,19 +119,19 @@ class UnsuperReward():
                 # Fluency calculation
                 fluency_scores = self._compute_fluency(sent_list[len(hyp_list)-1:])
             else:
-                fluency_scores = 0
+                fluency_scores = torch.zeros(1).to(process_device)
 
             if bool(self.w_tlss):
                 # TLSS calculation
                 tlss_scores = self._compute_token_level_semantic_similarity([src]*len(sent_list), sent_list)
             else:
-                tlss_scores = 0
+                tlss_scores = torch.zeros(1).to(process_device)
 
             if bool(self.w_slss):
                 # SLSS calculation
                 slss_scores = self._compute_sentence_level_semantic_similarity([src]*len(sent_list), sent_list)
             else:
-                slss_scores = 0
+                slss_scores = torch.zeros(1).to(process_device)
 
             # TODO remove the debugger below
             if col == 0:
@@ -139,15 +139,15 @@ class UnsuperReward():
                 print('HYP: {}'.format(hyp))
 
                 print('Fluency device: {}'.format(fluency_scores.device.index))
-                # print('tlss device: {}'.format(tlss_scores.device.index))
+                print('tlss device: {}'.format(tlss_scores.device.index))
                 print('slss device: {}'.format(slss_scores.device.index))
 
                 print('Fluency: {}'.format(fluency_scores))
-                # print('TLSS: {}'.format(tlss_scores))
+                print('TLSS: {}'.format(tlss_scores))
                 print('SLSS: {}'.format(slss_scores))
 
                 print('Fluency shape: {}'.format(fluency_scores.shape))
-                # print('TLSS shape: {}'.format(tlss_scores.shape))
+                print('TLSS shape: {}'.format(tlss_scores.shape))
                 print('SLSS shape: {}'.format(slss_scores.shape))
 
             pay_off = self.w_fluency * fluency_scores.exp() + \
