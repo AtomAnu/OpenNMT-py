@@ -134,6 +134,9 @@ class UnsuperReward():
 
             # TODO remove the debugger below
             if col == 0:
+                print('REF: {}'.format(ref))
+                print('HYP: {}'.format(hyp))
+
                 print('Fluency device: {}'.format(fluency_scores.device.index))
                 print('tlss device: {}'.format(tlss_scores.device.index))
                 print('slss device: {}'.format(slss_scores.device.index))
@@ -228,7 +231,7 @@ class UnsuperReward():
     def _normalise(self, score_tensor):
 
         if torch.min(score_tensor) == torch.max(score_tensor):
-            return torch.tensor([0.5]*len(score_tensor)-1).to(self.device)
+            return torch.tensor([0.5]*(len(score_tensor)-1)).to(self.device)
         else:
             norm_score_tensor = (score_tensor - torch.min(score_tensor)) / (torch.max(score_tensor) - torch.min(score_tensor))
             return norm_score_tensor[:-1]

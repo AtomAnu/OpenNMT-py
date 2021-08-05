@@ -875,7 +875,7 @@ class A2CLossCompute(LossComputeBase):
 
         if src is not None:
             # TODO remove the print lines
-            print('src: {}'.format(src[1:,0]))
+            print('src: {}'.format(src[:,0]))
             print('src shape: {}'.format(src.shape))
 
             shard_state["src"] = src
