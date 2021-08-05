@@ -23,6 +23,7 @@ from onmt.transforms import make_transforms, save_transforms, \
 from onmt.model_builder import build_model
 from onmt.utils.optimizers import Optimizer
 from onmt.constants import ModelTask
+from onmt.modules.rewards import UnsuperReward
 
 # Set sharing strategy manually instead of default based on the OS.
 torch.multiprocessing.set_sharing_strategy('file_system')
@@ -111,9 +112,13 @@ def train(opt):
     if opt.model_task == ModelTask.A3C:
         model_opt = _get_model_opts(opt, checkpoint=checkpoint)
 
+        # if len(opt.gpu_ranks) > 2:
+        global_gpu_id = opt.gpu_ranks[-1]
+
         # Build a global A2C model.
         global_a2c = build_model(model_opt, opt, fields, checkpoint)
         global_a2c.share_memory()
+        global_a2c.to('cuda:'+ str(global_gpu_id))
 
         # Build optimizer.
         if opt.train_from and checkpoint is not None:
@@ -125,10 +130,13 @@ def train(opt):
             critic_optim = Optimizer.from_opt(global_a2c.critic, opt, checkpoint=checkpoint)
             optim = (actor_optim, critic_optim)
 
+        unsuper_reward = UnsuperReward(fields, opt.w_fluency, opt.w_tlss, opt.w_slss, global_gpu_id, opt.norm_unsuper_reward)
+
         train_process = partial(
             a3c_main,
             global_model=global_a2c,
             optim=optim,
+            unsuper_reward=unsuper_reward,
             model_opt=model_opt,
             fields=fields,
             transforms_cls=transforms_cls,
@@ -141,6 +149,7 @@ def train(opt):
             checkpoint=checkpoint)
 
     nb_gpu = len(opt.gpu_ranks)
+    if opt.model_task == ModelTask.A3C: nb_gpu -= 1
 
     if opt.world_size > 1:
 

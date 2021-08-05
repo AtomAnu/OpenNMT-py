@@ -17,7 +17,7 @@ from onmt.utils.logging import logger
 from onmt.constants import ModelTask, PolicyStrategy
 import copy
 
-def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global_model=None):
+def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global_model=None, unsuper_reward=None):
     """
     Simplify `Trainer` creation based on user `opt`s*
 
@@ -33,9 +33,9 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global
     """
 
     tgt_field = dict(fields)["tgt"].base_field
-    train_loss = onmt.utils.loss.build_loss_compute(model, tgt_field, opt)
+    train_loss = onmt.utils.loss.build_loss_compute(model, tgt_field, opt, unsuper_reward=unsuper_reward)
     valid_loss = onmt.utils.loss.build_loss_compute(
-        model, tgt_field, opt, train=False)
+        model, tgt_field, opt, train=False, unsuper_reward=unsuper_reward)
 
     trunc_size = opt.truncated_decoder  # Badly named...
     shard_size = opt.max_generator_batches if opt.model_dtype == 'fp32' else 0
@@ -1207,7 +1207,7 @@ class A3CTrainer(object):
         Returns:
             :obj:`nmt.Statistics`: validation loss statistics
         """
-        valid_model = self.model
+        valid_model = copy.deepcopy(self.global_model).cuda()
         if moving_average:
             # swap model params w/ moving average
             # (and keep the original parameters)
@@ -1235,7 +1235,7 @@ class A3CTrainer(object):
                                                  with_align=self.with_align, policy_strategy=PolicyStrategy.Greedy)
 
                     # Compute loss.
-                    _, batch_stats = self.valid_loss(batch, outputs, attns, target_critic=self.target_network)
+                    _, batch_stats = self.valid_loss(batch, outputs, attns, target_critic=self.target_network, src=src)
 
                 # Update statistics.
                 stats.update(batch_stats)
@@ -1302,7 +1302,8 @@ class A3CTrainer(object):
                         normalization=normalization,
                         shard_size=self.shard_size,
                         trunc_start=j,
-                        trunc_size=trunc_size)
+                        trunc_size=trunc_size,
+                        src=src)
 
                     actor_loss, critic_loss = loss
 

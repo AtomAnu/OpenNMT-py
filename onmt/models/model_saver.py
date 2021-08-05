@@ -133,7 +133,7 @@ class ModelSaver(ModelSaverBase):
                 for key in keys_to_pop:
                     vocab[side].fields[0][1].vocab.stoi.pop(key, None)
 
-        if self.model_opt.model_task != ModelTask.AC and self.model_opt.model_task != ModelTask.A2C:
+        if self.model_opt.model_task not in [ModelTask.AC, ModelTask.A2C, ModelTask.A3C]:
             checkpoint = {
                 'model': model_state_dict,
                 'generator': generator_state_dict,

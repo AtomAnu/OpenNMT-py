@@ -128,7 +128,7 @@ def main(opt, fields, transforms_cls, checkpoint, device_id,
     if trainer.report_manager.tensorboard_writer is not None:
         trainer.report_manager.tensorboard_writer.close()
 
-def a3c_main(global_model, optim, model_opt, opt, fields, transforms_cls, checkpoint, device_id,
+def a3c_main(global_model, optim, unsuper_reward, model_opt, opt, fields, transforms_cls, checkpoint, device_id,
          batch_queue=None, semaphore=None):
     """Start training on `device_id`."""
     # NOTE: It's important that ``opt`` has been validated and updated
@@ -144,7 +144,8 @@ def a3c_main(global_model, optim, model_opt, opt, fields, transforms_cls, checkp
     model_saver = build_model_saver(model_opt, opt, global_model, fields, optim)
 
     trainer = build_trainer(
-        opt, device_id, model, fields, optim, model_saver=model_saver, global_model=global_model)
+        opt, device_id, model, fields, optim,
+        model_saver=model_saver, global_model=global_model, unsuper_reward=unsuper_reward)
 
     if batch_queue is None:
         _train_iter = _build_train_iter(opt, fields, transforms_cls)

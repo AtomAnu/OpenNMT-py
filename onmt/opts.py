@@ -270,6 +270,30 @@ def model_opts(parser):
         default=1.0,
         help="Discount factor used in return calculation (0 - 1)")
     group.add(
+        "-w_fluency",
+        "--w_fluency",
+        type=float,
+        default=1.0,
+        help="[For Unsupervised Reward Function] Fluency weight")
+    group.add(
+        "-w_tlss",
+        "--w_tlss",
+        type=float,
+        default=1.0,
+        help="[For Unsupervised Reward Function] Token-level Semantic Similarity weight")
+    group.add(
+        "-w_slss",
+        "--w_slss",
+        type=float,
+        default=1.0,
+        help="[For Unsupervised Reward Function] Sentence-level Semantic Similarity weight")
+    group.add(
+        "-norm_unsuper_reward",
+        "--norm_unsuper_reward",
+        type=bool,
+        default=True,
+        help="[For Unsupervised Reward Function] Specify whether to normalise each term in the reward")
+    group.add(
         "-policy_strategy",
         "--policy_strategy",
         type=str,

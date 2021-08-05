@@ -13,7 +13,7 @@ from onmt.constants import ModelTask, TrainMode
 from onmt.modules.rewards import bleu_add_1
 
 
-def build_loss_compute(model, tgt_field, opt, train=True):
+def build_loss_compute(model, tgt_field, opt, train=True, unsuper_reward=None):
     """
     Returns a LossCompute subclass which wraps around an nn.Module subclass
     (such as nn.NLLLoss) which defines the loss criterion. The LossCompute
@@ -108,7 +108,8 @@ def build_loss_compute(model, tgt_field, opt, train=True):
                 opt.lambda_xent,
                 tgt_field.vocab,
                 eos_idx,
-                unk_idx
+                unk_idx,
+                unsuper_reward=unsuper_reward
             )
         else:
             raise ValueError(
@@ -182,7 +183,8 @@ class LossComputeBase(nn.Module):
                  normalization=1.0,
                  shard_size=0,
                  trunc_start=0,
-                 trunc_size=None):
+                 trunc_size=None,
+                 src=None):
         """Compute the forward loss, possibly in shards in which case this
         method also runs the backward pass and returns ``None`` as the loss
         value.
@@ -213,7 +215,7 @@ class LossComputeBase(nn.Module):
         if trunc_size is None:
             trunc_size = batch.tgt.size(0) - trunc_start
         trunc_range = (trunc_start, trunc_start + trunc_size)
-        shard_state = self._make_shard_state(batch, output, trunc_range, attns)
+        shard_state = self._make_shard_state(batch, output, trunc_range, attns, src=src)
         if shard_size == 0:
             # TODO support original OpenNMT pipeline
 
@@ -658,8 +660,8 @@ class A2CLossCompute(LossComputeBase):
 
     Implement loss compatible with coverage and alignement shards
     """
-    def __init__(self, criterion, generator, model, discount_factor, lambda_xent, tgt_vocab, eos_idx, unk_idx, normalization="sents",
-                 lambda_coverage=0.0, lambda_align=0.0, tgt_shift_index=0):
+    def __init__(self, criterion, generator, model, discount_factor, lambda_xent, tgt_vocab, eos_idx, unk_idx, unsuper_reward=None,
+                 normalization="sents", lambda_coverage=0.0, lambda_align=0.0, tgt_shift_index=0):
         super(A2CLossCompute, self).__init__(criterion, generator)
         self.lambda_coverage = lambda_coverage
         self.lambda_align = lambda_align
@@ -670,9 +672,10 @@ class A2CLossCompute(LossComputeBase):
         self.tgt_vocab = tgt_vocab
         self.eos_idx = eos_idx
         self.unk_idx = unk_idx
+        self.unsuper_reward = unsuper_reward
 
     def _compute_loss(self, batch, output, target, std_attn=None, target_critic=None,
-                      coverage_attn=None, align_head=None, ref_align=None):
+                      coverage_attn=None, align_head=None, ref_align=None, src=None):
 
         if self.model.train_mode == TrainMode.ACTOR:
             bottled_output = self._bottle(output)
@@ -705,7 +708,11 @@ class A2CLossCompute(LossComputeBase):
             scores = self._bottle(scores)
             gtruth = target.view(-1)
 
-            reward_tensor = self._compute_reward(output[1:], target[1:], bleu_add_1)
+            # reward_tensor = self._compute_reward(output[1:], target[1:], bleu_add_1)
+
+            # TODO unsuper reward computation
+            reward_tensor = self.unsuper_reward.compute_reward(src[1:], target[1:], output[1:], src.device.index)
+
             reward_to_go_tensor = self._compute_reward_to_go(reward_tensor)
 
             critic_loss = ((V[:-1] - reward_to_go_tensor)**2).sum((0,1))
@@ -848,7 +855,7 @@ class A2CLossCompute(LossComputeBase):
         align_loss *= self.lambda_align
         return align_loss
 
-    def _make_shard_state(self, batch, output, range_, attns=None):
+    def _make_shard_state(self, batch, output, range_, attns=None, src=None):
         range_start = range_[0] + self.tgt_shift_index
         range_end = range_[1]
 
@@ -865,6 +872,14 @@ class A2CLossCompute(LossComputeBase):
                 "target": batch.tgt[range_start:range_end, :, 0],
                 "std_attn": attns[range_start:range_end, :, :],
             }
+
+        if src is not None:
+            # TODO remove the print lines
+            print('src: {}'.format(src[1:,0]))
+            print('src shape: {}'.format(src.shape))
+
+            shard_state["src"] = src
+
         if self.lambda_coverage != 0.0:
             self._add_coverage_shard_state(shard_state, attns)
         if self.lambda_align != 0.0:
