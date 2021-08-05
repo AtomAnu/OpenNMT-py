@@ -113,7 +113,7 @@ def train(opt):
         model_opt = _get_model_opts(opt, checkpoint=checkpoint)
 
         # if len(opt.gpu_ranks) > 2:
-        global_gpu_id = opt.gpu_ranks[-1]
+        global_gpu_id = opt.gpu_ranks[-1] + 1
 
         # Build a global A2C model.
         global_a2c = build_model(model_opt, opt, fields, checkpoint)
@@ -149,7 +149,6 @@ def train(opt):
             checkpoint=checkpoint)
 
     nb_gpu = len(opt.gpu_ranks)
-    if opt.model_task == ModelTask.A3C: nb_gpu -= 1
 
     if opt.world_size > 1:
 
