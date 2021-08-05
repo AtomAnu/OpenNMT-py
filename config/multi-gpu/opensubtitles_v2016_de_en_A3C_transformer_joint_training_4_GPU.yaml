@@ -41,8 +41,8 @@ pool_factor: 8192
 world_size: 3
 gpu_ranks: [0,1,2]
 batch_type: "tokens"
-batch_size: 500
-valid_batch_size: 500
+batch_size: 4096
+valid_batch_size: 4096
 batch_size_multiple: 1
 max_generator_batches: 0
 accum_count: [3]
@@ -87,3 +87,6 @@ dropout_steps: [0]
 dropout: [0.1]
 attention_dropout: [0.1]
 position_encoding: true
+
+# Logging
+log_file: logs/a3c-4gpu/joint_training.txt
