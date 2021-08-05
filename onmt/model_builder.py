@@ -382,8 +382,8 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
     return model
 
 
-def build_model(model_opt, opt, fields, checkpoint):
+def build_model(model_opt, opt, fields, checkpoint, gpu_id=None):
     logger.info('Building model...')
-    model = build_base_model(model_opt, fields, use_gpu(opt), checkpoint)
+    model = build_base_model(model_opt, fields, use_gpu(opt), checkpoint, gpu_id=gpu_id)
     logger.info(model)
     return model
