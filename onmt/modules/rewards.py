@@ -212,8 +212,9 @@ class UnsuperReward():
 
     def _compute_token_level_semantic_similarity(self, src_list, sent_list):
 
-        self.bert_score_metric.add_batch(predictions=sent_list, references=src_list)
-        scores = self.bert_score_metric.compute(model_type=self.bert_score_model_type, device=self.device)
+        with torch.no_grad():
+            self.bert_score_metric.add_batch(predictions=sent_list, references=src_list)
+            scores = self.bert_score_metric.compute(model_type=self.bert_score_model_type, device=self.device)
 
         if self.normalise:
             return self._normalise(torch.tensor(scores['f1']).to(self.device))
@@ -222,9 +223,10 @@ class UnsuperReward():
 
     def _compute_sentence_level_semantic_similarity(self, src_list, sent_list):
 
-        src_emb = self.sentence_transformer.encode(src_list , convert_to_tensor=True, device=self.device)
-        sent_emb = self.sentence_transformer.encode(sent_list , convert_to_tensor=True, device=self.device)
-        cosine_similarity = self.cos_sim(sent_emb, src_emb)
+        with torch.no_grad():
+            src_emb = self.sentence_transformer.encode(src_list , convert_to_tensor=True, device=self.device)
+            sent_emb = self.sentence_transformer.encode(sent_list , convert_to_tensor=True, device=self.device)
+            cosine_similarity = self.cos_sim(sent_emb, src_emb)
 
         if self.normalise:
             return self._normalise(cosine_similarity)
