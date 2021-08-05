@@ -308,9 +308,11 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
         else:
             gen_func = nn.LogSoftmax(dim=-1)
 
+        # TODO think about the ReLU added
         generator = nn.Sequential(
             nn.Linear(model_opt.dec_rnn_size,
                       len(fields["tgt"].base_field.vocab)),
+            nn.ReLU(),
             Cast(torch.float32),
             gen_func
         )

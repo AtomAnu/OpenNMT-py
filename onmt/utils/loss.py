@@ -711,7 +711,7 @@ class A2CLossCompute(LossComputeBase):
             # reward_tensor = self._compute_reward(output[1:], target[1:], bleu_add_1)
 
             # TODO unsuper reward computation
-            reward_tensor = self.unsuper_reward.compute_reward(src[1:], target[1:], output[1:], src.device.index)
+            reward_tensor = self.unsuper_reward.compute_reward(src, target[1:], output[1:], src.device.index)
 
             reward_to_go_tensor = self._compute_reward_to_go(reward_tensor)
 
@@ -877,7 +877,7 @@ class A2CLossCompute(LossComputeBase):
             # TODO remove the print lines
             print('src: {}'.format(src[:,0]))
             print('src shape: {}'.format(src.shape))
-
+            print('tgt shape: {}'.format(batch.tgt.shape))
             shard_state["src"] = src
 
         if self.lambda_coverage != 0.0:

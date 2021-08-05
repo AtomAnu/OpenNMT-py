@@ -170,6 +170,7 @@ class UnsuperReward():
 
         with torch.no_grad():
             loss = self.GPTLM(ids_tensor, lm_labels=ids_tensor)
+            print('LM ppl: {}'.format(loss))
             fluency = 1 / np.exp(loss.item())
         return fluency
 
