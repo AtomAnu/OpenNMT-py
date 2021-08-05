@@ -70,7 +70,7 @@ policy_sampling_temperature: [1,1,1]
 discount_factor: 0.5
 w_fluency: 1
 w_tlss: 0
-w_slss: 1
+w_slss: 0
 norm_unsuper_reward: true
 lambda_var: 0.25
 use_target_network: false
