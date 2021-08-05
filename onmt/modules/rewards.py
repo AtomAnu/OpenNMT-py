@@ -139,15 +139,15 @@ class UnsuperReward():
                 print('HYP: {}'.format(hyp))
 
                 print('Fluency device: {}'.format(fluency_scores.device.index))
-                print('tlss device: {}'.format(tlss_scores.device.index))
+                # print('tlss device: {}'.format(tlss_scores.device.index))
                 print('slss device: {}'.format(slss_scores.device.index))
 
                 print('Fluency: {}'.format(fluency_scores))
-                print('TLSS: {}'.format(tlss_scores))
+                # print('TLSS: {}'.format(tlss_scores))
                 print('SLSS: {}'.format(slss_scores))
 
                 print('Fluency shape: {}'.format(fluency_scores.shape))
-                print('TLSS shape: {}'.format(tlss_scores.shape))
+                # print('TLSS shape: {}'.format(tlss_scores.shape))
                 print('SLSS shape: {}'.format(slss_scores.shape))
 
             pay_off = self.w_fluency * fluency_scores.exp() + \
