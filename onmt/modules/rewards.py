@@ -179,6 +179,8 @@ class UnsuperReward():
     def _compute_fluency(self, sent_list):
 
         if self.normalise:
+            print('HYP_REF_len: {}'.format(len(sent_list)))
+
             hyp, ref = sent_list
 
             ref_words = ref.strip().split()
