@@ -41,11 +41,11 @@ pool_factor: 8192
 world_size: 3
 gpu_ranks: [0,1,2]
 batch_type: "tokens"
-batch_size: 4096
-valid_batch_size: 4096
+batch_size: 2000
+valid_batch_size: 2000
 batch_size_multiple: 1
 max_generator_batches: 0
-accum_count: [1]
+accum_count: [3]
 accum_steps: [0]
 
 # Optimization
