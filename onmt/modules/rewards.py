@@ -181,6 +181,8 @@ class UnsuperReward():
         if self.normalise:
             print('HYP_REF_len: {}'.format(len(sent_list)))
 
+            if len(sent_list) < 2: print('SENT_LIST: {}'.format(sent_list))
+
             hyp, ref = sent_list
 
             ref_words = ref.strip().split()
