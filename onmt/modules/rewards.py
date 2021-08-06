@@ -110,6 +110,9 @@ class UnsuperReward():
                     if hyp_row == hyp_ids.shape[0] - 1:
                         hyp_row += 1
 
+            if len(hyp_list) == 0:
+                continue
+
             if self.normalise:
                 sent_list = hyp_list + [ref]
                 print('HYP_LIST: {}'.format(hyp_list))
