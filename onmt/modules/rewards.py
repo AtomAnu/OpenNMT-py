@@ -18,6 +18,8 @@ class UnsuperReward():
 
     def __init__(self, fields, w_fluency, w_tlss, w_slss, gpu_id, normalise=True):
 
+        print('Initialising unsuper reward')
+
         self.src_vocab = fields['src'].base_field.vocab
         self.tgt_vocab = fields['tgt'].base_field.vocab
         self.src_eos = fields['src'].base_field.vocab.stoi[fields['src'].base_field.eos_token]
