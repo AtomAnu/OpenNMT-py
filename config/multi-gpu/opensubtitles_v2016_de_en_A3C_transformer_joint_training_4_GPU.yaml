@@ -31,7 +31,7 @@ average_decay: 0.0005
 seed: 1234
 report_every: 1
 train_steps: 1000000
-valid_steps: 25
+valid_steps: 1000
 gpu_verbose_level: 1
 
 # Batching
@@ -71,7 +71,7 @@ policy_topp_sampling: [1.0,0.7,0.5]
 discount_factor: 0.5
 w_fluency: 1
 w_tlss: 0
-w_slss: 0
+w_slss: 1
 norm_unsuper_reward: true
 lambda_var: 0.25
 use_target_network: false

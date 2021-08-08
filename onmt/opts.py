@@ -288,7 +288,7 @@ def model_opts(parser):
         default=1.0,
         help="[For Unsupervised Reward Function] Sentence-level Semantic Similarity weight")
     group.add(
-        "-norm_unsuper_reward",
+        "-unsuper_reward",
         "--norm_unsuper_reward",
         type=bool,
         default=True,

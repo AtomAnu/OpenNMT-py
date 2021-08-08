@@ -184,7 +184,7 @@ class Actor(nn.Module):
                     policy_topk_sampling = -1, policy_sampling_temperature = 1, policy_topp_sampling = -1):
 
         if policy_strategy == PolicyStrategy.Greedy:
-            gen_tok = self.sample_with_temperature(logits, sampling_temp=0, keep_topk=1, keep_topp=-1)[0]
+            gen_tok = self.sample_with_temperature(logits, sampling_temp=1, keep_topk=10, keep_topp=-1)[0]
         elif policy_strategy == PolicyStrategy.Categorical:
             gen_tok = self.sample_with_temperature(logits, sampling_temp=policy_sampling_temperature,
                                               keep_topk=policy_topk_sampling, keep_topp=policy_topp_sampling)[0]

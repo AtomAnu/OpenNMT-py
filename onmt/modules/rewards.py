@@ -116,8 +116,6 @@ class UnsuperReward():
 
             if self.normalise:
                 sent_list = hyp_list + [ref]
-                print('HYP_LIST: {}'.format(hyp_list))
-                print('** REF: {}'.format([ref]))
             else:
                 sent_list = hyp_list
 
@@ -167,7 +165,7 @@ class UnsuperReward():
 
         reward_tensor = reward_tensor.unsqueeze(2)
 
-        return reward_tensor.to(process_device), ref, hyp
+        return reward_tensor.to(process_device)
 
     def _GPTLM_tokenize(self, word):
 
