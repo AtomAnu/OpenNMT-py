@@ -1,10 +1,11 @@
 """ Onmt NMT Model base class definition """
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.distributions import Categorical
 from onmt.constants import TrainMode, PolicyStrategy
 import numpy as np
-from onmt.translate.greedy_search import sample_with_temperature
+# from onmt.translate.greedy_search import sample_with_temperature
 
 class BaseModel(nn.Module):
     """
@@ -183,9 +184,9 @@ class Actor(nn.Module):
                     policy_topk_sampling = -1, policy_sampling_temperature = 1, policy_topp_sampling = -1):
 
         if policy_strategy == PolicyStrategy.Greedy:
-            gen_tok = sample_with_temperature(logits, sampling_temp=0, keep_topk=1, keep_topp=-1)[0]
+            gen_tok = self.sample_with_temperature(logits, sampling_temp=0, keep_topk=1, keep_topp=-1)[0]
         elif policy_strategy == PolicyStrategy.Categorical:
-            gen_tok = sample_with_temperature(logits, sampling_temp=policy_sampling_temperature,
+            gen_tok = self.sample_with_temperature(logits, sampling_temp=policy_sampling_temperature,
                                               keep_topk=policy_topk_sampling, keep_topp=policy_topp_sampling)[0]
         return gen_tok.unsqueeze(0).to('cuda')
         # if policy_strategy == PolicyStrategy.Greedy:
@@ -206,6 +207,89 @@ class Actor(nn.Module):
         #         gen_tok.append(selected_tok)
         #
         #     return torch.tensor(gen_tok).view(1,-1,1).to('cuda')
+
+    def sample_topp(self, logits, keep_topp):
+        sorted_logits, sorted_indices = torch.sort(logits,
+                                                   descending=True,
+                                                   dim=1)
+
+        cumulative_probs = torch.cumsum(F.softmax(sorted_logits,
+                                                  dim=-1), dim=-1)
+        sorted_indices_to_keep = cumulative_probs.lt(keep_topp)
+
+        # keep indices until overflowing p
+        cumsum_mask = sorted_indices_to_keep.cumsum(dim=1)
+        last_included = cumsum_mask[:, -1:]
+        last_included.clamp_(0, sorted_indices_to_keep.size()[1] - 1)
+        sorted_indices_to_keep = sorted_indices_to_keep.scatter_(
+            1, last_included, 1)
+
+        # Set all logits that are not in the top-p to -10000.
+        # This puts the probabilities close to 0.
+        keep_indices = sorted_indices_to_keep.scatter(
+            1,
+            sorted_indices,
+            sorted_indices_to_keep,
+        )
+        return logits.masked_fill(~keep_indices, -10000)
+
+    def sample_topk(self, logits, keep_topk):
+        top_values, _ = torch.topk(logits, keep_topk, dim=1)
+        kth_best = top_values[:, -1].view([-1, 1])
+        kth_best = kth_best.repeat([1, logits.shape[1]]).float()
+
+        # Set all logits that are not in the top-k to -10000.
+        # This puts the probabilities close to 0.
+        ignore = torch.lt(logits, kth_best)
+        return logits.masked_fill(ignore, -10000)
+
+    def sample_with_temperature(self, logits, sampling_temp, keep_topk, keep_topp):
+        """Select next tokens randomly from the top k possible next tokens.
+
+        Samples from a categorical distribution over the ``keep_topk`` words using
+        the category probabilities ``logits / sampling_temp``.
+
+        Args:
+            logits (FloatTensor): Shaped ``(batch_size, vocab_size)``.
+                These can be logits (``(-inf, inf)``) or log-probs (``(-inf, 0]``).
+                (The distribution actually uses the log-probabilities
+                ``logits - logits.logsumexp(-1)``, which equals the logits if
+                they are log-probabilities summing to 1.)
+            sampling_temp (float): Used to scale down logits. The higher the
+                value, the more likely it is that a non-max word will be
+                sampled.
+            keep_topk (int): This many words could potentially be chosen. The
+                other logits are set to have probability 0.
+            keep_topp (float): Keep most likely words until the cumulated
+                probability is greater than p. If used with keep_topk: both
+                conditions will be applied
+
+        Returns:
+            (LongTensor, FloatTensor):
+
+            * topk_ids: Shaped ``(batch_size, 1)``. These are
+              the sampled word indices in the output vocab.
+            * topk_scores: Shaped ``(batch_size, 1)``. These
+              are essentially ``(logits / sampling_temp)[topk_ids]``.
+        """
+
+        if sampling_temp == 0.0 or keep_topk == 1:
+            # For temp=0.0, take the argmax to avoid divide-by-zero errors.
+            # keep_topk=1 is also equivalent to argmax.
+            topk_scores, topk_ids = logits.topk(1, dim=-1)
+            if sampling_temp > 0:
+                topk_scores /= sampling_temp
+        else:
+            logits = torch.div(logits, sampling_temp)
+            if keep_topp > 0:
+                logits = sample_topp(logits, keep_topp)
+            if keep_topk > 0:
+                logits = sample_topk(logits, keep_topk)
+            dist = torch.distributions.Multinomial(
+                logits=logits, total_count=1)
+            topk_ids = torch.argmax(dist.sample(), dim=1, keepdim=True)
+            topk_scores = logits.gather(dim=1, index=topk_ids)
+        return topk_ids, topk_scores
 
     def _categorical_sampling(self, scores):
 
