@@ -282,9 +282,9 @@ class Actor(nn.Module):
         else:
             logits = torch.div(logits, sampling_temp)
             if keep_topp > 0:
-                logits = sample_topp(logits, keep_topp)
+                logits = self.sample_topp(logits, keep_topp)
             if keep_topk > 0:
-                logits = sample_topk(logits, keep_topk)
+                logits = self.sample_topk(logits, keep_topk)
             dist = torch.distributions.Multinomial(
                 logits=logits, total_count=1)
             topk_ids = torch.argmax(dist.sample(), dim=1, keepdim=True)

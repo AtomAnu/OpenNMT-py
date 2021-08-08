@@ -67,7 +67,7 @@ train_mode: ac
 policy_strategy: [categorical, categorical, categorical]
 policy_topk_sampling: [-1,-1,-1]
 policy_sampling_temperature: [0.7,0.7,0.7]
-policy_topp_sampling: [0.7,0.5,0.3]
+policy_topp_sampling: [1.0,0.7,0.5]
 discount_factor: 0.5
 w_fluency: 1
 w_tlss: 0
