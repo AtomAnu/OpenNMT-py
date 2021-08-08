@@ -1297,7 +1297,7 @@ class A3CTrainer(object):
                         policy_strategy=self.policy_strategy,
                         policy_topk_sampling=self.policy_topk_sampling,
                         policy_sampling_temperature=self.policy_sampling_temperature,
-                        policy_topp_temperature=self.policy_topp_sampling,
+                        policy_topp_sampling=self.policy_topp_sampling,
                         epsilon=self.epsilon)
                     bptt = True
 

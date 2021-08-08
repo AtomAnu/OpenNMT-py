@@ -11,6 +11,6 @@ from onmt.translate.translation_server import TranslationServer, \
 
 __all__ = ['Translator', 'Translation', 'BeamSearch',
            'GNMTGlobalScorer', 'TranslationBuilder',
-           'PenaltyBuilder', 'TranslationServer', 'ServerModelError', 'sample_with_temperature',
-           "DecodeStrategy", "GreedySearch", "GreedySearchLM",
+           'PenaltyBuilder', 'TranslationServer', 'ServerModelError',
+           "DecodeStrategy", "GreedySearch", "GreedySearchLM", 'sample_with_temperature',
            "BeamSearchLM", "GeneratorLM"]
