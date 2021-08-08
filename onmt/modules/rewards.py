@@ -114,6 +114,7 @@ class UnsuperReward():
             if len(hyp_list) == 0:
                 continue
 
+            print('Debugging')
             if self.normalise:
                 sent_list = hyp_list + [ref]
                 print('HYP_LIST: {}'.format(hyp_list))
