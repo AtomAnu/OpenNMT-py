@@ -22,6 +22,7 @@ class UnsuperReward():
         self.tgt_vocab = fields['tgt'].base_field.vocab
         self.src_eos = fields['src'].base_field.vocab.stoi[fields['src'].base_field.eos_token]
         self.tgt_eos = fields['tgt'].base_field.vocab.stoi[fields['tgt'].base_field.eos_token]
+        self.tgt_pad = fields['tgt'].base_field.vocab.stoi[fields['tgt'].base_field.pad_token]
         self.w_fluency = w_fluency
         self.w_tlss = w_tlss
         self.w_slss = w_slss
@@ -100,7 +101,7 @@ class UnsuperReward():
 
                 tok_idx = int(hyp_ids[hyp_row, col])
 
-                if tok_idx == self.tgt_eos:
+                if tok_idx == self.tgt_eos or self.tgt_pad:
                     break
                 else:
                     tok = self.tgt_vocab.itos[tok_idx]
@@ -249,25 +250,3 @@ class UnsuperReward():
         else:
             norm_score_tensor = (score_tensor - torch.min(score_tensor)) / (torch.max(score_tensor) - torch.min(score_tensor))
             return norm_score_tensor[:-1]
-
-# def calculate_fluency(lm, hyp_ids_tensor):
-#
-#     with torch.no_grad():
-#         loss = lm(hyp_ids_tensor, lm_labels=hyp_ids_tensor)
-#         fluency = 1/np.exp(loss.item())
-#     return fluency
-#
-# def getSentSimilarity(sents1, sents2, model, device=None):
-#     embed_sent1 = model.encode(sents1, convert_to_tensor=True, device=device)
-#     embed_sent2 = model.encode(sents2, convert_to_tensor=True, device=device)
-#     cos_sim = nn.CosineSimilarity(dim=1)(embed_sent1,embed_sent2)
-#     # Normalized
-#     cos_sim = (cos_sim -torch.min(cos_sim))/ (torch.max(cos_sim)-torch.min(cos_sim))
-#     return cos_sim.cpu().numpy()
-#
-# def getBertScore(sents1, sents2, model, device=None):
-#     bert_score_metric.add_batch(predictions=sents2, references=sents1)
-#     score = bert_score_metric.compute(model_type=model, device=device)
-#     # Normalized Bert Score F1
-#     norm_score = (score["f1"] -torch.min(score["f1"]))/ (torch.max(score["f1"])-torch.min(score["f1"]))
-#     return norm_score.tolist()

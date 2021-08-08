@@ -128,7 +128,7 @@ def main(opt, fields, transforms_cls, checkpoint, device_id,
     if trainer.report_manager.tensorboard_writer is not None:
         trainer.report_manager.tensorboard_writer.close()
 
-def a3c_main(global_model, optim, unsuper_reward, model_opt, opt, fields, transforms_cls, checkpoint, device_id,
+def a3c_main(global_model, optim, global_gpu_id, model_opt, opt, fields, transforms_cls, checkpoint, device_id,
          batch_queue=None, semaphore=None):
     """Start training on `device_id`."""
     # NOTE: It's important that ``opt`` has been validated and updated
@@ -168,7 +168,7 @@ def a3c_main(global_model, optim, unsuper_reward, model_opt, opt, fields, transf
 
     valid_iter = _build_valid_iter(opt, fields, transforms_cls)
     if valid_iter is not None:
-        valid_iter = IterOnDevice(valid_iter, device_id)
+        valid_iter = IterOnDevice(valid_iter, global_gpu_id)
 
     if len(opt.gpu_ranks):
         logger.info('Starting training on GPU: %s' % opt.gpu_ranks)

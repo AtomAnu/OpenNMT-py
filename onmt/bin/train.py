@@ -131,13 +131,14 @@ def train(opt):
             optim = (actor_optim, critic_optim)
 
         # unsuper_reward = UnsuperReward(fields, opt.w_fluency, opt.w_tlss, opt.w_slss, global_gpu_id, opt.norm_unsuper_reward)
-        unsuper_reward = None
+        # unsuper_reward = None
 
         train_process = partial(
             a3c_main,
             global_model=global_a2c,
             optim=optim,
-            unsuper_reward=unsuper_reward,
+            global_gpu_id=global_gpu_id,
+            # unsuper_reward=unsuper_reward,
             model_opt=model_opt,
             fields=fields,
             transforms_cls=transforms_cls,

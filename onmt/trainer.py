@@ -95,10 +95,11 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global
         actor_optim, critic_optim = optim
         policy_strategy = opt.policy_strategy[gpu_rank]
         policy_topk_sampling = opt.policy_topk_sampling[gpu_rank]
-        policy_sampling_temperature = opt.policy_sampling_temperature
+        policy_sampling_temperature = opt.policy_sampling_temperature[gpu_rank]
+        policy_topp_sampling = opt.policy_topp_sampling[gpu_rank]
 
         trainer = onmt.A3CTrainer(global_model, model, train_loss, valid_loss, actor_optim, critic_optim,
-                                  policy_strategy, policy_topk_sampling, policy_sampling_temperature,
+                                  policy_strategy, policy_topk_sampling, policy_sampling_temperature, policy_topp_sampling,
                                   opt.epsilon, opt.epsilon_decay, opt.use_target_network,
                                   opt.target_network_update_period,
                                   trunc_size, shard_size, norm_method,
@@ -990,7 +991,7 @@ class A3CTrainer(object):
     """
 
     def __init__(self, global_model, model, train_loss, valid_loss, actor_optim, critic_optim,
-                 policy_strategy, policy_topk_sampling, policy_sampling_temperature,
+                 policy_strategy, policy_topk_sampling, policy_sampling_temperature, policy_topp_sampling,
                  epsilon, epsilon_decay, use_target_network, target_network_update_period,
                  trunc_size=0, shard_size=32,
                  norm_method="sents", accum_count=[1],
@@ -1009,6 +1010,7 @@ class A3CTrainer(object):
         self.policy_strategy = policy_strategy
         self.policy_topk_sampling = policy_topk_sampling
         self.policy_sampling_temperature = policy_sampling_temperature
+        self.policy_topp_sampling = policy_topp_sampling
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.use_target_network = use_target_network
@@ -1207,7 +1209,7 @@ class A3CTrainer(object):
         Returns:
             :obj:`nmt.Statistics`: validation loss statistics
         """
-        valid_model = copy.deepcopy(self.global_model).cuda()
+        valid_model = self.global_model
         if moving_average:
             # swap model params w/ moving average
             # (and keep the original parameters)
@@ -1232,7 +1234,8 @@ class A3CTrainer(object):
                 with torch.cuda.amp.autocast(enabled=self.actor_optim.amp):
                     # F-prop through the model.
                     outputs, attns = valid_model(src, tgt, src_lengths,
-                                                 with_align=self.with_align, policy_strategy=PolicyStrategy.Greedy)
+                                                 with_align=self.with_align,
+                                                 policy_strategy=PolicyStrategy.Greedy)
 
                     # Compute loss.
                     _, batch_stats = self.valid_loss(batch, outputs, attns, target_critic=self.target_network, src=src)
@@ -1285,12 +1288,17 @@ class A3CTrainer(object):
                     """
                     if opt.train_mode != 'actor' 
                     outputs -> generated sequence(s)
-                    attns -> policy distribution (exp(actor's generator scores))
+                    attns -> log policy distribution (actor's generator scores)
                     """
 
                     outputs, attns = self.model(
                         src, tgt, src_lengths, bptt=bptt,
-                        with_align=self.with_align, policy_strategy=self.policy_strategy, epsilon=self.epsilon)
+                        with_align=self.with_align,
+                        policy_strategy=self.policy_strategy,
+                        policy_topk_sampling=self.policy_topk_sampling,
+                        policy_sampling_temperature=self.policy_sampling_temperature,
+                        policy_topp_temperature=self.policy_topp_sampling,
+                        epsilon=self.epsilon)
                     bptt = True
 
                     # 3. Compute loss.

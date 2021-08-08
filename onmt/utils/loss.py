@@ -703,9 +703,8 @@ class A2CLossCompute(LossComputeBase):
         else:
             V = self.model.critic(target, output, self.eos_idx)
 
-            policy_dist = std_attn
-            scores = std_attn.log() # log(policy distribution)
-            scores = self._bottle(scores)
+            log_policy_dist = std_attn
+            scores = self._bottle(log_policy_dist)
             gtruth = target.view(-1)
 
             # reward_tensor = self._compute_reward(output[1:], target[1:], bleu_add_1)
@@ -724,11 +723,11 @@ class A2CLossCompute(LossComputeBase):
                 return (None, critic_loss), stats
             else:
 
-                policy_dist_mod = policy_dist.gather(2, output.to(torch.int64))
+                log_policy_dist_mod = log_policy_dist.gather(2, output.to(torch.int64))
 
                 xent_loss = self.criterion(scores, gtruth)
 
-                policy_loss = -(policy_dist_mod[:-1] * (reward_tensor + self.discount_factor * V[1:].detach() - V[:-1].detach())).sum()
+                policy_loss = -(log_policy_dist_mod[:-1] * (reward_tensor + self.discount_factor * V[1:].detach() - V[:-1].detach())).sum()
 
                 actor_loss = policy_loss + self.lambda_xent * xent_loss
 
@@ -773,9 +772,6 @@ class A2CLossCompute(LossComputeBase):
                         hyp_row += 1
 
             reward_tensor[:hyp_row, col] = torch.tensor(reward_list)
-
-        print('Ref: {}'.format(ref))
-        print('hyp: {}'.format(hyp))
 
         # reward shaping
         reward_tensor[1:] -= reward_tensor[:-1].clone()
@@ -874,10 +870,6 @@ class A2CLossCompute(LossComputeBase):
             }
 
         if src is not None:
-            # TODO remove the print lines
-            print('src: {}'.format(src[:,0]))
-            print('src shape: {}'.format(src.shape))
-            print('tgt shape: {}'.format(batch.tgt.shape))
             shard_state["src"] = src
 
         if self.lambda_coverage != 0.0:

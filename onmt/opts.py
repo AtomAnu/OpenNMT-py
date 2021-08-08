@@ -316,6 +316,13 @@ def model_opts(parser):
         nargs="+",
         help="Value of temperature for policy sampling (1 for no temperature effect)")
     group.add(
+        "-policy_topp_sampling",
+        "--policy_topp_sampling",
+        type=int,
+        default=[-1],
+        nargs="+",
+        help="Value of p for nucleus sampling (-1 to do sampling from the full distribution)")
+    group.add(
         "-epsilon",
         "--epsilon",
         type=float,

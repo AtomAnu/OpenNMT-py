@@ -4,6 +4,7 @@ import torch.nn as nn
 from torch.distributions import Categorical
 from onmt.constants import TrainMode, PolicyStrategy
 import numpy as np
+from onmt.translate.greedy_search import sample_with_temperature
 
 class BaseModel(nn.Module):
     """
@@ -113,7 +114,8 @@ class Actor(nn.Module):
         self.decoder = decoder
 
     def forward(self, src, tgt, lengths, bptt=False, with_align=False, train_mode=TrainMode.ACTOR, tgt_field=None,
-                policy_strategy=PolicyStrategy.Categorical, epsilon=0):
+                policy_strategy=PolicyStrategy.Categorical, policy_topk_sampling=-1, policy_sampling_temperature=1,
+                policy_topp_sampling=-1, epsilon=0):
 
         if train_mode == TrainMode.ACTOR:
             enc_state, memory_bank, lengths = self.encoder(src, lengths)
@@ -129,13 +131,20 @@ class Actor(nn.Module):
             return dec_out, attns
         elif train_mode == TrainMode.CRITIC:
             with torch.no_grad():
-                return self._step_wise_forward(src, tgt, lengths, bptt, with_align, tgt_field, policy_strategy, epsilon)
+                return self._step_wise_forward(src, tgt, lengths, bptt, with_align,
+                                               tgt_field, policy_strategy,
+                                               policy_topk_sampling, policy_sampling_temperature,
+                                               policy_topp_sampling, epsilon)
         else:
             with torch.enable_grad():
-                return self._step_wise_forward(src, tgt, lengths, bptt, with_align, tgt_field, policy_strategy, epsilon)
+                return self._step_wise_forward(src, tgt, lengths, bptt, with_align,
+                                               tgt_field, policy_strategy,
+                                               policy_topk_sampling, policy_sampling_temperature,
+                                               policy_topp_sampling, epsilon)
 
     def _step_wise_forward(self, src, tgt, lengths, bptt=False, with_align=False, tgt_field=None,
-                           policy_strategy=PolicyStrategy.Categorical, epsilon=0):
+                           policy_strategy=PolicyStrategy.Categorical, policy_topk_sampling=-1,
+                           policy_sampling_temperature=1, policy_topp_sampling=-1, epsilon=0):
 
         enc_state, memory_bank, lengths = self.encoder(src, lengths)
 
@@ -152,42 +161,51 @@ class Actor(nn.Module):
                                           memory_lengths=lengths,
                                           with_align=with_align)
 
-            scores = self.generator(dec_out)
-            # gen_tok = torch.argmax(scores, 2).unsqueeze(2)
-            gen_tok = self._choose_tok(scores, epsilon, policy_strategy)
+            logits = self.generator[0:2](dec_out.squeeze(0))
+            gen_tok = self._choose_tok(logits, epsilon, policy_strategy,
+                                       policy_topk_sampling, policy_sampling_temperature, policy_topp_sampling)
             gen_seq = torch.cat([gen_seq, gen_tok], dim=0)
 
+            scores = self.generator[2](logits).unsqueeze(0)
+
             if step == 0:
-                policy_dist = scores.exp()
+                log_policy_dist = scores
             else:
-                policy_dist = torch.cat([policy_dist, scores.exp()], dim=0)
+                log_policy_dist = torch.cat([log_policy_dist, scores], dim=0)
 
         gen_seq_mask, policy_mask = self._compute_output_mask(gen_seq, tgt_field.base_field.vocab.stoi[tgt_field.base_field.eos_token])
         gen_seq = gen_seq * gen_seq_mask.to(torch.int64) + (~gen_seq_mask).to(torch.int64)
-        policy_dist = policy_dist * policy_mask.to(torch.int64) + (~policy_mask).to(torch.int64)
+        log_policy_dist = log_policy_dist * policy_mask.to(torch.int64) + (~policy_mask).to(torch.int64)
 
-        return gen_seq, policy_dist
+        return gen_seq, log_policy_dist
 
-    def _choose_tok(self, scores, epsilon, policy_strategy=PolicyStrategy.Categorical):
+    def _choose_tok(self, logits, epsilon, policy_strategy=PolicyStrategy.Categorical,
+                    policy_topk_sampling = -1, policy_sampling_temperature = 1, policy_topp_sampling = -1):
 
         if policy_strategy == PolicyStrategy.Greedy:
-            return torch.argmax(scores, 2).unsqueeze(2)
+            gen_tok = sample_with_temperature(logits, sampling_temp=0, keep_topk=1, keep_topp=-1)[0]
         elif policy_strategy == PolicyStrategy.Categorical:
-            return self._categorical_sampling(scores)
-        else:
-            vocab_size = scores.shape[2]
-            best_tok = torch.argmax(scores, 2).squeeze(0).cpu().numpy()
-            gen_tok = []
-
-            for tok in best_tok:
-
-                epsilon_greedy_policy = self._generate_epsilon_greedy_policy(tok, vocab_size, epsilon)
-
-                selected_tok = np.random.choice(list(range(0, vocab_size)), p=epsilon_greedy_policy)
-
-                gen_tok.append(selected_tok)
-
-            return torch.tensor(gen_tok).view(1,-1,1).to('cuda')
+            gen_tok = sample_with_temperature(logits, sampling_temp=policy_sampling_temperature,
+                                              keep_topk=policy_topk_sampling, keep_topp=policy_topp_sampling)[0]
+        return gen_tok.unsqueeze(0).to('cuda')
+        # if policy_strategy == PolicyStrategy.Greedy:
+        #     return torch.argmax(logits, 2).unsqueeze(2)
+        # elif policy_strategy == PolicyStrategy.Categorical:
+        #     return self._categorical_sampling(scores)
+        # else:
+        #     vocab_size = scores.shape[2]
+        #     best_tok = torch.argmax(scores, 2).squeeze(0).cpu().numpy()
+        #     gen_tok = []
+        #
+        #     for tok in best_tok:
+        #
+        #         epsilon_greedy_policy = self._generate_epsilon_greedy_policy(tok, vocab_size, epsilon)
+        #
+        #         selected_tok = np.random.choice(list(range(0, vocab_size)), p=epsilon_greedy_policy)
+        #
+        #         gen_tok.append(selected_tok)
+        #
+        #     return torch.tensor(gen_tok).view(1,-1,1).to('cuda')
 
     def _categorical_sampling(self, scores):
 
@@ -480,9 +498,16 @@ class A2CNMTModel(BaseModel):
     def generator(self):
         return self.actor.generator
 
-    def forward(self, src, tgt, lengths, bptt=False, with_align=False, policy_strategy=PolicyStrategy.Categorical, epsilon=0):
+    def forward(self, src, tgt, lengths, bptt=False, with_align=False,
+                policy_strategy=PolicyStrategy.Categorical,
+                policy_topk_sampling=-1,
+                policy_sampling_temperature=1,
+                policy_topp_sampling=-1,
+                epsilon=0):
 
-        return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode, self.tgt_field, policy_strategy, epsilon)
+        return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode,
+                          self.tgt_field, policy_strategy, policy_topk_sampling,
+                          policy_sampling_temperature, policy_topp_sampling, epsilon)
 
     def update_dropout(self, dropout):
         self.actor.update_dropout(dropout)
