@@ -709,7 +709,10 @@ class A2CLossCompute(LossComputeBase):
 
             # reward_tensor = self._compute_reward(output[1:], target[1:], bleu_add_1)
 
-            reward_tensor = self.unsuper_reward.compute_reward(src, target[1:], output[1:], src.device.index)
+            reward_tensor, ref, hyp = self.unsuper_reward.compute_reward(src, target[1:], output[1:], src.device.index)
+
+            print('REF: {}'.format(ref))
+            print('HYP: {}'.format(hyp))
 
             reward_to_go_tensor = self._compute_reward_to_go(reward_tensor)
 

@@ -18,8 +18,6 @@ class UnsuperReward():
 
     def __init__(self, fields, w_fluency, w_tlss, w_slss, gpu_id, normalise=True):
 
-        print('Initialising unsuper reward')
-
         self.src_vocab = fields['src'].base_field.vocab
         self.tgt_vocab = fields['tgt'].base_field.vocab
         self.src_eos = fields['src'].base_field.vocab.stoi[fields['src'].base_field.eos_token]
@@ -116,7 +114,6 @@ class UnsuperReward():
             if len(hyp_list) == 0:
                 continue
 
-            print('Debugging')
             if self.normalise:
                 sent_list = hyp_list + [ref]
                 print('HYP_LIST: {}'.format(hyp_list))
@@ -170,7 +167,7 @@ class UnsuperReward():
 
         reward_tensor = reward_tensor.unsqueeze(2)
 
-        return reward_tensor.to(process_device)
+        return reward_tensor.to(process_device), ref, hyp
 
     def _GPTLM_tokenize(self, word):
 
