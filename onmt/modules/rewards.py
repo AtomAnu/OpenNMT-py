@@ -101,7 +101,7 @@ class UnsuperReward():
 
                 tok_idx = int(hyp_ids[hyp_row, col])
 
-                if tok_idx == self.tgt_eos or self.tgt_pad:
+                if tok_idx == self.tgt_eos:
                     break
                 else:
                     tok = self.tgt_vocab.itos[tok_idx]
