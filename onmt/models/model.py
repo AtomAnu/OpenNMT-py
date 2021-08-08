@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.distributions import Categorical
 from onmt.constants import TrainMode, PolicyStrategy
 import numpy as np
-# from onmt.translate import sample_with_temperature
+from onmt.translate import sample_with_temperature
 
 class BaseModel(nn.Module):
     """

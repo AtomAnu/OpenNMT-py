@@ -318,8 +318,8 @@ def model_opts(parser):
     group.add(
         "-policy_topp_sampling",
         "--policy_topp_sampling",
-        type=int,
-        default=[-1],
+        type=float,
+        default=[-1.],
         nargs="+",
         help="Value of p for nucleus sampling (-1 to do sampling from the full distribution)")
     group.add(
