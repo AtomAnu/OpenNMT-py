@@ -115,6 +115,7 @@ def train(opt):
         # if len(opt.gpu_ranks) > 2:
         global_gpu_id = opt.gpu_ranks[-1] + 1
 
+        print('Building the global A2C')
         # Build a global A2C model.
         global_a2c = build_model(model_opt, opt, fields, checkpoint, gpu_id=global_gpu_id)
         global_a2c.share_memory()
