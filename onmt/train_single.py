@@ -168,7 +168,7 @@ def a3c_main(global_model, optim, global_gpu_id, model_opt, opt, fields, transfo
 
     valid_iter = _build_valid_iter(opt, fields, transforms_cls)
     if valid_iter is not None:
-        valid_iter = IterOnDevice(valid_iter, global_gpu_id)
+        valid_iter = IterOnDevice(valid_iter, device_id)
 
     if len(opt.gpu_ranks):
         logger.info('Starting training on GPU: %s' % opt.gpu_ranks)

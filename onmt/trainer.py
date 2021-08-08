@@ -1209,7 +1209,7 @@ class A3CTrainer(object):
         Returns:
             :obj:`nmt.Statistics`: validation loss statistics
         """
-        valid_model = self.global_model
+        valid_model = copy.deepcopy(self.global_model).cuda()
         if moving_average:
             # swap model params w/ moving average
             # (and keep the original parameters)
