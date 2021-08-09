@@ -21,13 +21,16 @@ class UnsuperReward():
         self.src_vocab = fields['src'].base_field.vocab
         self.tgt_vocab = fields['tgt'].base_field.vocab
         self.src_eos = fields['src'].base_field.vocab.stoi[fields['src'].base_field.eos_token]
+        self.tgt_bos = fields['tgt'].base_field.vocab.stoi[fields['tgt'].base_field.init_token]
         self.tgt_eos = fields['tgt'].base_field.vocab.stoi[fields['tgt'].base_field.eos_token]
+        self.tgt_unk = fields['tgt'].base_field.vocab.stoi[fields['tgt'].base_field.unk_token]
         self.tgt_pad = fields['tgt'].base_field.vocab.stoi[fields['tgt'].base_field.pad_token]
         self.w_fluency = w_fluency
         self.w_tlss = w_tlss
         self.w_slss = w_slss
         self.device = 'cuda:' + str(gpu_id)
         self.normalise = normalise
+        self.special_tok_penalty = -10
 
         if bool(w_fluency):
             ##### For Fluency Computation
@@ -43,8 +46,8 @@ class UnsuperReward():
 
         if bool(w_slss):
             ##### For Sentence-level Semantic Similarity Computation
-            self.sentence_transformer = SentenceTransformer('xlm-r-bert-base-nli-stsb-mean-tokens')
-            self.sentence_transformer.eval().to(self.device)
+            self.sentence_transformer = SentenceTransformer('xlm-r-bert-base-nli-stsb-mean-tokens', device=self.device)
+            self.sentence_transformer.eval()
             self.cos_sim = CosineSimilarity(dim=1).to(self.device)
 
     def compute_reward(self, src_ids, tgt_ids, hyp_ids, process_gpu_id):
@@ -70,6 +73,7 @@ class UnsuperReward():
         process_device = 'cuda:' + str(process_gpu_id)
 
         reward_tensor = torch.zeros(hyp_ids.shape[0], hyp_ids.shape[1]).to(process_device)
+        special_tok_penalty_mask = torch.ones(hyp_ids.shape[0], hyp_ids.shape[1]).to(torch.bool).to(process_device)
 
         for col in range(0, hyp_ids.shape[1]):
             src = ''
@@ -101,9 +105,12 @@ class UnsuperReward():
 
                 tok_idx = int(hyp_ids[hyp_row, col])
 
-                if tok_idx == self.tgt_eos:
+                if tok_idx == self.tgt_eos or self.tgt_pad:
                     break
                 else:
+                    if tok_idx in [self.tgt_bos, self.tgt_unk]:
+                        special_tok_penalty_mask[hyp_row, col] = ~special_tok_penalty_mask[hyp_row, col]
+
                     tok = self.tgt_vocab.itos[tok_idx]
                     hyp += tok + ' '
                     hyp_list.append(hyp)
@@ -163,9 +170,10 @@ class UnsuperReward():
         # reward shaping
         reward_tensor[1:] -= reward_tensor[:-1].clone()
 
-        reward_tensor = reward_tensor.unsqueeze(2)
+        reward_tensor = reward_tensor * special_tok_penalty_mask.to(torch.int64) + \
+                        (~special_tok_penalty_mask).to(torch.int64) * self.special_tok_penalty
 
-        return reward_tensor.to(process_device)
+        return reward_tensor.unsqueeze(2).to(process_device)
 
     def _GPTLM_tokenize(self, word):
 
@@ -183,9 +191,7 @@ class UnsuperReward():
     def _compute_fluency(self, sent_list):
 
         if self.normalise:
-            print('HYP_REF_len: {}'.format(len(sent_list)))
-
-            if len(sent_list) < 2: print('SENT_LIST: {}'.format(sent_list))
+            # if len(sent_list) < 2: print('SENT_LIST: {}'.format(sent_list))
 
             hyp, ref = sent_list
 

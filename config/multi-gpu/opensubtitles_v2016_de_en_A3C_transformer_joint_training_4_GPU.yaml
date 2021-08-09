@@ -66,7 +66,7 @@ model_task: a3c
 train_mode: ac
 policy_strategy: [categorical, categorical, categorical]
 policy_topk_sampling: [-1,-1,-1]
-policy_sampling_temperature: [0.7,0.7,0.7]
+policy_sampling_temperature: [1.0,0.9,0.7]
 policy_topp_sampling: [1.0,0.7,0.5]
 discount_factor: 0.5
 w_fluency: 1
