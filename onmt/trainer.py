@@ -14,7 +14,7 @@ import traceback
 
 import onmt.utils
 from onmt.utils.logging import logger
-from onmt.constants import ModelTask, PolicyStrategy
+from onmt.constants import ModelTask, TrainMode, PolicyStrategy
 import copy
 
 def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global_model=None, unsuper_reward=None):
@@ -75,6 +75,23 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global
                                dropout=dropout,
                                dropout_steps=dropout_steps)
     elif opt.model_task in [ModelTask.AC, ModelTask.A2C]:
+        actor_optim, critic_optim = optim
+
+        trainer = onmt.ACTrainer(model, train_loss, valid_loss, actor_optim, critic_optim,
+                                 opt.epsilon, opt.epsilon_decay, opt.use_target_network, opt.target_network_update_period,
+                                 trunc_size, shard_size, norm_method,
+                                 accum_count, accum_steps,
+                                 n_gpu, gpu_rank,
+                                 gpu_verbose_level, report_manager,
+                                 with_align=True if opt.lambda_align > 0 else False,
+                                 model_saver=model_saver if gpu_rank <= 0 else None,
+                                 average_decay=average_decay,
+                                 average_every=average_every,
+                                 model_dtype=opt.model_dtype,
+                                 earlystopper=earlystopper,
+                                 dropout=dropout,
+                                 dropout_steps=dropout_steps)
+    elif opt.model_task == ModelTask.A3C and opt.train_mode == TrainMode.ACTOR:
         actor_optim, critic_optim = optim
 
         trainer = onmt.ACTrainer(model, train_loss, valid_loss, actor_optim, critic_optim,
@@ -1335,22 +1352,24 @@ class A3CTrainer(object):
 
                 # 4. Update the parameters and statistics.
                 if self.accum_count == 1:
-                    for local_actor_param, global_actor_param in zip(
-                            self.model.actor.parameters(),
-                            self.global_model.actor.parameters()):
+                    if actor_loss is not None:
+                        for local_actor_param, global_actor_param in zip(
+                                self.model.actor.parameters(),
+                                self.global_model.actor.parameters()):
 
-                        global_actor_param._grad = local_actor_param.grad.to(global_actor_param.device)
+                            global_actor_param._grad = local_actor_param.grad.to(global_actor_param.device)
 
-                    for local_critic_param, global_critic_param in zip(
-                            self.model.critic.parameters(),
-                            self.global_model.critic.parameters()):
-                        global_critic_param._grad = local_critic_param.grad.to(global_critic_param.device)
+                    if critic_loss is not None:
+                        for local_critic_param, global_critic_param in zip(
+                                self.model.critic.parameters(),
+                                self.global_model.critic.parameters()):
+                            global_critic_param._grad = local_critic_param.grad.to(global_critic_param.device)
 
                     self.actor_optim.step()
                     self.critic_optim.step()
 
-                    self.model.actor.load_state_dict(self.global_model.actor.state_dict())
-                    self.model.critic.load_state_dict(self.global_model.critic.state_dict())
+                    if actor_loss is not None: self.model.actor.load_state_dict(self.global_model.actor.state_dict())
+                    if critic_loss is not None: self.model.critic.load_state_dict(self.global_model.critic.state_dict())
 
                 # If truncated, don't backprop fully.
                 # TO CHECK
@@ -1362,21 +1381,23 @@ class A3CTrainer(object):
         # in case of multi step gradient accumulation,
         # update only after accum batches
         if self.accum_count > 1:
-            for local_actor_param, global_actor_param in zip(
-                    self.model.actor.parameters(),
-                    self.global_model.actor.parameters()):
-                global_actor_param._grad = local_actor_param.grad.to(global_actor_param.device)
+            if actor_loss is not None:
+                for local_actor_param, global_actor_param in zip(
+                        self.model.actor.parameters(),
+                        self.global_model.actor.parameters()):
+                    global_actor_param._grad = local_actor_param.grad.to(global_actor_param.device)
 
-            for local_critic_param, global_critic_param in zip(
-                    self.model.critic.parameters(),
-                    self.global_model.critic.parameters()):
-                global_critic_param._grad = local_critic_param.grad.to(global_critic_param.device)
+            if critic_loss is not None:
+                for local_critic_param, global_critic_param in zip(
+                        self.model.critic.parameters(),
+                        self.global_model.critic.parameters()):
+                    global_critic_param._grad = local_critic_param.grad.to(global_critic_param.device)
 
             self.actor_optim.step()
             self.critic_optim.step()
 
-            self.model.actor.load_state_dict(self.global_model.actor.state_dict())
-            self.model.critic.load_state_dict(self.global_model.critic.state_dict())
+            if actor_loss is not None: self.model.actor.load_state_dict(self.global_model.actor.state_dict())
+            if critic_loss is not None: self.model.critic.load_state_dict(self.global_model.critic.state_dict())
 
     def _start_report_manager(self, start_time=None):
         """

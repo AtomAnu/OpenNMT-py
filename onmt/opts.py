@@ -270,6 +270,12 @@ def model_opts(parser):
         default=1.0,
         help="Discount factor used in return calculation (0 - 1)")
     group.add(
+        "-multi_step",
+        "--multi_step",
+        type=int,
+        default=1,
+        help="Value of n for multi-step return (1 for using only the immediate reward)")
+    group.add(
         "-w_fluency",
         "--w_fluency",
         type=float,

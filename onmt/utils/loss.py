@@ -93,6 +93,7 @@ def build_loss_compute(model, tgt_field, opt, train=True, unsuper_reward=None):
                 loss_gen,
                 model,
                 opt.discount_factor,
+                opt.multi_step,
                 opt.lambda_xent,
                 opt.lambda_var,
                 tgt_field.vocab,
@@ -105,6 +106,7 @@ def build_loss_compute(model, tgt_field, opt, train=True, unsuper_reward=None):
                 loss_gen,
                 model,
                 opt.discount_factor,
+                opt.multi_step,
                 opt.lambda_xent,
                 tgt_field.vocab,
                 eos_idx,
@@ -436,7 +438,8 @@ class ACLossCompute(LossComputeBase):
 
     Implement loss compatible with coverage and alignement shards
     """
-    def __init__(self, criterion, generator, model, discount_factor, lambda_xent, lambda_var, tgt_vocab, eos_idx, unk_idx, normalization="sents",
+    def __init__(self, criterion, generator, model, discount_factor, multi_step, lambda_xent,
+                 lambda_var, tgt_vocab, eos_idx, unk_idx, normalization="sents",
                  lambda_coverage=0.0, lambda_align=0.0, tgt_shift_index=0):
         super(ACLossCompute, self).__init__(criterion, generator)
         self.lambda_coverage = lambda_coverage
@@ -444,6 +447,7 @@ class ACLossCompute(LossComputeBase):
         self.tgt_shift_index = tgt_shift_index
         self.model = model
         self.discount_factor = discount_factor
+        self.multi_step = multi_step
         self.lambda_xent = lambda_xent
         self.lambda_var = lambda_var
         self.tgt_vocab = tgt_vocab
@@ -660,7 +664,8 @@ class A2CLossCompute(LossComputeBase):
 
     Implement loss compatible with coverage and alignement shards
     """
-    def __init__(self, criterion, generator, model, discount_factor, lambda_xent, tgt_vocab, eos_idx, unk_idx, unsuper_reward=None,
+    def __init__(self, criterion, generator, model, discount_factor, multi_step, lambda_xent,
+                 tgt_vocab, eos_idx, unk_idx, unsuper_reward=None,
                  normalization="sents", lambda_coverage=0.0, lambda_align=0.0, tgt_shift_index=0):
         super(A2CLossCompute, self).__init__(criterion, generator)
         self.lambda_coverage = lambda_coverage
@@ -668,6 +673,7 @@ class A2CLossCompute(LossComputeBase):
         self.tgt_shift_index = tgt_shift_index
         self.model = model
         self.discount_factor = discount_factor
+        self.multi_step = multi_step
         self.lambda_xent = lambda_xent
         self.tgt_vocab = tgt_vocab
         self.eos_idx = eos_idx
@@ -726,7 +732,12 @@ class A2CLossCompute(LossComputeBase):
 
                 xent_loss = self.criterion(scores, gtruth)
 
-                policy_loss = -(log_policy_dist_mod[:-1] * (reward_tensor + self.discount_factor * V[1:].detach() - V[:-1].detach())).sum()
+                future_V = self._prepare_future_V(V.detach())
+
+                multi_step_return = self._maybe_compute_multi_step_return(reward_tensor)
+
+                policy_loss = -(log_policy_dist_mod[:-1] * (multi_step_return +
+                               (self.discount_factor ** self.multi_step) * future_V - V[:-1].detach())).sum()
 
                 actor_loss = policy_loss + self.lambda_xent * xent_loss
 
@@ -788,6 +799,27 @@ class A2CLossCompute(LossComputeBase):
             reward_to_go_tensor[row, :, :] += self.discount_factor * reward_to_go_tensor[row + 1, :, :]
 
         return reward_to_go_tensor
+
+    def _maybe_compute_multi_step_return(self, reward_tensor):
+
+        if self.multi_step == 1:
+            return reward_tensor
+        else:
+            multi_step_return = reward_tensor
+
+            for row in range(0, reward_tensor.shape[0]-1):
+                for step in range(row + 1, min(row + self.multi_step, reward_tensor.shape[0])):
+                    multi_step_return[row, :] += (self.discount_factor ** (step - row)) * reward_tensor[step, :]
+            return multi_step_return
+
+    def _prepare_future_V(self, V):
+
+        if self.multi_step == 1:
+            return V[1:]
+        else:
+            future_V = torch.zeros(V.shape[0]-1, V.shape[1], V.shape[2]).to('cuda')
+            future_V[self.multi_step:] += V[self.multi_step:]
+            return future_V
 
     def _add_coverage_shard_state(self, shard_state, attns):
         coverage = attns.get("coverage", None)

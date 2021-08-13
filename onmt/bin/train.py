@@ -22,7 +22,7 @@ from onmt.transforms import make_transforms, save_transforms, \
     get_specials, get_transforms_cls
 from onmt.model_builder import build_model
 from onmt.utils.optimizers import Optimizer
-from onmt.constants import ModelTask
+from onmt.constants import ModelTask, TrainMode
 from onmt.modules.rewards import UnsuperReward
 
 # Set sharing strategy manually instead of default based on the OS.
@@ -109,7 +109,7 @@ def train(opt):
 
     checkpoint, fields, transforms_cls = _init_train(opt)
 
-    if opt.model_task == ModelTask.A3C:
+    if opt.model_task == ModelTask.A3C and opt.train_mode in [TrainMode.CRITIC, TrainMode.AC]:
         model_opt = _get_model_opts(opt, checkpoint=checkpoint)
 
         # if len(opt.gpu_ranks) > 2:

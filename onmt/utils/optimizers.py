@@ -568,6 +568,21 @@ class SharedAdam(torch.optim.Adam):
                 state['exp_avg'].share_memory_()
                 state['exp_avg_sq'].share_memory_()
 
+    # def load_state(self, state_dict):
+    #
+    #     self.load_state_dict(state_dict)
+    #
+    #     for group in self.param_groups:
+    #         for p in group['params']:
+    #             state = self.state[p]
+    #             if len(state) == 0:
+    #                 state['step'] = 0
+    #                 state['exp_avg'] = torch.zeros_like(p.data)
+    #                 state['exp_avg_sq'] = torch.zeros_like(p.data)
+    #
+    #             state['exp_avg'].share_memory_()
+    #             state['exp_avg_sq'].share_memory_()
+
 class FusedAdam(torch.optim.Optimizer):
 
     """Implements Adam algorithm. Currently GPU-only.

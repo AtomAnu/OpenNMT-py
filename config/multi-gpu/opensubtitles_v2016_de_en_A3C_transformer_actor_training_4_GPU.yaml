@@ -24,16 +24,14 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/OpenSubtitles-v2016/joint_training/a3c/model
-train_from: data/OpenSubtitles-v2016/critic_pretraining/a3c/model_step_30000.pt
-reset_optim: "none"
+save_model: data/OpenSubtitles-v2016/actor_pretraining/a3c/model
 keep_checkpoint: 50
 save_checkpoint_steps: 10000
 average_decay: 0.0005
 seed: 1234
 report_every: 1
-train_steps: 1000000
-valid_steps: 1000
+train_steps: 100000
+valid_steps: 5000
 gpu_verbose_level: 2
 
 # Batching
@@ -43,8 +41,8 @@ pool_factor: 8192
 world_size: 3
 gpu_ranks: [0,1,2]
 batch_type: "tokens"
-batch_size: 2000
-valid_batch_size: 2000
+batch_size: 4096
+valid_batch_size: 4096
 batch_size_multiple: 1
 max_generator_batches: 0
 accum_count: [3]
@@ -52,7 +50,7 @@ accum_steps: [0]
 
 # Optimization
 model_dtype: "fp32"
-optim: "sharedadam"
+optim: "adam"
 learning_rate: 2
 warmup_steps: 6000
 decay_method: "noam"
@@ -65,7 +63,7 @@ normalization: "tokens"
 
 # Model
 model_task: a3c
-train_mode: ac
+train_mode: actor
 policy_strategy: [categorical, categorical, categorical]
 policy_topk_sampling: [-1,-1,-1]
 policy_sampling_temperature: [1.0,0.9,0.7]
@@ -93,4 +91,4 @@ attention_dropout: [0.1]
 position_encoding: true
 
 # Logging
-log_file: logs/a3c-4gpu/joint_training.txt
+log_file: logs/a3c-4gpu/actor_pretraining.txt
