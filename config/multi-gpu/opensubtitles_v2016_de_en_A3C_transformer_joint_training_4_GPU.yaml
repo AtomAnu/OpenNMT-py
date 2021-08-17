@@ -55,8 +55,9 @@ model_dtype: "fp32"
 optim: "sharedadam"
 learning_rate: 2
 warmup_steps: 1
-decay_method: "noam"
+decay_method: "none"
 start_decay_steps: 0
+learning_rate_decay: 0.9
 adam_beta2: 0.998
 max_grad_norm: 0
 label_smoothing: 0.1
