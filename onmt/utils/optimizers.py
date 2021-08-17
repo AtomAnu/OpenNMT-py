@@ -70,7 +70,7 @@ def build_torch_optimizer(model, opt, ac_optim_opt=None):
         if ac_optim_opt is None or opt.train_mode == TrainMode.ACTOR:
             lr = opt.learning_rate
         elif ac_optim_opt == 'actor':
-            lr = opt.actor_learning_rates
+            lr = opt.actor_learning_rate
         elif ac_optim_opt == 'critic':
             lr = opt.critic_learning_rate
 
