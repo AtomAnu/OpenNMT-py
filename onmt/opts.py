@@ -370,18 +370,6 @@ def model_opts(parser):
         type=int,
         default=500,
         help="Update period of the target network, if used")
-    group.add(
-        "-actor_learning_rate",
-        "--actor_learning_rate",
-        type=float,
-        default=0.0001,
-        help="Actor optimizer learning rate")
-    group.add(
-        "-critic_learning_rate",
-        "--critic_learning_rate",
-        type=float,
-        default=0.0001,
-        help="Critic optimizer learning rate")
 
 
     # Encoder-Decoder Options
@@ -749,6 +737,18 @@ def _add_train_general_opts(parser):
               help="Use a custom decay rate.")
     group.add('--warmup_steps', '-warmup_steps', type=int, default=4000,
               help="Number of warmup steps for custom decay.")
+    group.add(
+        "-actor_learning_rate",
+        "--actor_learning_rate",
+        type=float,
+        default=0.0001,
+        help="Actor optimizer learning rate")
+    group.add(
+        "-critic_learning_rate",
+        "--critic_learning_rate",
+        type=float,
+        default=0.0001,
+        help="Critic optimizer learning rate")
     _add_logging_opts(parser, is_train=True)
 
 
