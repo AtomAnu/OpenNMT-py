@@ -264,6 +264,12 @@ def model_opts(parser):
         choices=[TrainMode.ACTOR, TrainMode.CRITIC, TrainMode.AC],
         help="Pre-training/Training mode for Actor-Critic models (actor, critic or ac)")
     group.add(
+        "-async",
+        "--async",
+        type=bool,
+        default=False,
+        help="Specify whether to enable asynchronous training (default is synchronous training)")
+    group.add(
         "-discount_factor",
         "--discount_factor",
         type=float,
@@ -294,7 +300,7 @@ def model_opts(parser):
         default=1.0,
         help="[For Unsupervised Reward Function] Sentence-level Semantic Similarity weight")
     group.add(
-        "-unsuper_reward",
+        "-norm_unsuper_reward",
         "--norm_unsuper_reward",
         type=bool,
         default=True,
@@ -364,6 +370,18 @@ def model_opts(parser):
         type=int,
         default=500,
         help="Update period of the target network, if used")
+    group.add(
+        "-actor_learning_rate",
+        "--actor_learning_rate",
+        type=float,
+        default=0.0001,
+        help="Actor optimizer learning rate")
+    group.add(
+        "-critic_learning_rate",
+        "--critic_learning_rate",
+        type=float,
+        default=0.0001,
+        help="Critic optimizer learning rate")
 
 
     # Encoder-Decoder Options

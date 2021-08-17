@@ -9,9 +9,10 @@ from math import sqrt
 import types
 import importlib
 from onmt.utils.misc import fn_args
+from onmt.constants import TrainMode
 
 
-def build_torch_optimizer(model, opt):
+def build_torch_optimizer(model, opt, ac_optim_opt=None):
     """Builds the PyTorch optimizer.
 
     We use the default parameters for Adam that are suggested by
@@ -50,15 +51,32 @@ def build_torch_optimizer(model, opt):
             enable_factorization=True,
             weight_decay=0)
     elif opt.optim == 'adam':
+
+        if ac_optim_opt is None or opt.train_mode == TrainMode.ACTOR:
+            lr = opt.learning_rate
+        elif ac_optim_opt == 'actor':
+            lr = opt.actor_learning_rate
+        elif ac_optim_opt == 'critic':
+            lr = opt.critic_learning_rate
+
         optimizer = optim.Adam(
             params,
-            lr=opt.learning_rate,
+            lr=lr,
             betas=betas,
             eps=1e-9)
+
     elif opt.optim == 'sharedadam':
+
+        if ac_optim_opt is None or opt.train_mode == TrainMode.ACTOR:
+            lr = opt.learning_rate
+        elif ac_optim_opt == 'actor':
+            lr = opt.actor_learning_rates
+        elif ac_optim_opt == 'critic':
+            lr = opt.critic_learning_rate
+
         optimizer = SharedAdam(
                     params,
-                    lr=opt.learning_rate,
+                    lr=lr,
                     betas=betas)
     elif opt.optim == 'sparseadam':
         dense = []
@@ -282,9 +300,16 @@ class Optimizer(object):
                 # Reset options, keep optimizer.
                 optim_state_dict = ckpt_state_dict
 
+        if ac_optim_opt is None or opt.train_mode == TrainMode.ACTOR:
+            lr = opt.learning_rate
+        elif ac_optim_opt == 'actor':
+            lr = opt.actor_learning_rate
+        elif ac_optim_opt == 'critic':
+            lr = opt.critic_learning_rate
+
         optimizer = cls(
-            build_torch_optimizer(model, optim_opt),
-            optim_opt.learning_rate,
+            build_torch_optimizer(model, optim_opt, ac_optim_opt),
+            learning_rate=lr,
             learning_rate_decay_fn=make_learning_rate_decay_fn(optim_opt),
             max_grad_norm=optim_opt.max_grad_norm)
         if opt.model_dtype == "fp16":

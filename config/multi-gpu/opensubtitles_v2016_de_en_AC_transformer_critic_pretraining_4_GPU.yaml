@@ -24,22 +24,23 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/OpenSubtitles-v2016/joint_training/ac-2gpu-new/model
-train_from: data/OpenSubtitles-v2016/critic_pretraining/ac-2gpu-new/model_step_200000.pt
+save_model: data/OpenSubtitles-v2016/critic_pretraining/ac-2gpu-new/model
+train_from: data/OpenSubtitles-v2016/actor_pretraining/ac-2gpu-new/model_step_100000.pt
+reset_optim: "all"
 keep_checkpoint: 50
-save_checkpoint_steps: 100000
+save_checkpoint_steps: 10000
 average_decay: 0.0005
 seed: 1234
 report_every: 1
-train_steps: 300000
-valid_steps: 100000
+train_steps: 200000
+valid_steps: 10000
 
 # Batching
 queue_size: 1024
 bucket_size: 32768
 pool_factor: 8192
-world_size: 2
-gpu_ranks: [0,1]
+world_size: 3
+gpu_ranks: [0,1,2]
 batch_type: "tokens"
 batch_size: 4096
 valid_batch_size: 4096
@@ -64,7 +65,7 @@ normalization: "tokens"
 
 # Model
 model_task: ac
-train_mode: ac
+train_mode: critic
 policy_strategy: [categorical, categorical, categorical]
 policy_topk_sampling: [-1,-1,-1]
 policy_sampling_temperature: [1.0,0.9,0.7]
@@ -90,6 +91,3 @@ dropout_steps: [0]
 dropout: [0.1]
 attention_dropout: [0.1]
 position_encoding: true
-
-# Logging
-log_file: logs/ac/joint_training.txt

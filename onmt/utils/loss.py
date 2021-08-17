@@ -98,7 +98,8 @@ def build_loss_compute(model, tgt_field, opt, train=True, unsuper_reward=None):
                 opt.lambda_var,
                 tgt_field.vocab,
                 eos_idx,
-                unk_idx
+                unk_idx,
+                unsuper_reward=unsuper_reward
             )
         elif opt.model_task == ModelTask.A2C or opt.model_task == ModelTask.A3C:
             compute = A2CLossCompute(
@@ -439,8 +440,8 @@ class ACLossCompute(LossComputeBase):
     Implement loss compatible with coverage and alignement shards
     """
     def __init__(self, criterion, generator, model, discount_factor, multi_step, lambda_xent,
-                 lambda_var, tgt_vocab, eos_idx, unk_idx, normalization="sents",
-                 lambda_coverage=0.0, lambda_align=0.0, tgt_shift_index=0):
+                 lambda_var, tgt_vocab, eos_idx, unk_idx, unsuper_reward=None,
+                 normalization="sents", lambda_coverage=0.0, lambda_align=0.0, tgt_shift_index=0):
         super(ACLossCompute, self).__init__(criterion, generator)
         self.lambda_coverage = lambda_coverage
         self.lambda_align = lambda_align
@@ -453,9 +454,10 @@ class ACLossCompute(LossComputeBase):
         self.tgt_vocab = tgt_vocab
         self.eos_idx = eos_idx
         self.unk_idx = unk_idx
+        self.unsuper_reward = unsuper_reward
 
     def _compute_loss(self, batch, output, target, std_attn=None, target_critic=None,
-                      coverage_attn=None, align_head=None, ref_align=None):
+                      coverage_attn=None, align_head=None, ref_align=None, src=None):
 
         if self.model.train_mode == TrainMode.ACTOR:
 
@@ -495,7 +497,9 @@ class ACLossCompute(LossComputeBase):
             scores = self._bottle(scores)
             gtruth = target.view(-1)
 
-            reward_tensor = self._compute_reward(output[1:], target[1:], bleu_add_1)
+            # reward_tensor = self._compute_reward(output[1:], target[1:], bleu_add_1)
+
+            reward_tensor = self.unsuper_reward.compute_reward(src, target[1:], output[1:], src.device.index)
 
             if target_critic is not None:
                 with torch.no_grad():
@@ -633,7 +637,7 @@ class ACLossCompute(LossComputeBase):
         align_loss *= self.lambda_align
         return align_loss
 
-    def _make_shard_state(self, batch, output, range_, attns=None):
+    def _make_shard_state(self, batch, output, range_, attns=None, src=None):
         range_start = range_[0] + self.tgt_shift_index
         range_end = range_[1]
 
@@ -650,6 +654,10 @@ class ACLossCompute(LossComputeBase):
                 "target": batch.tgt[range_start:range_end, :, 0],
                 "std_attn": attns[range_start:range_end, :, :],
             }
+
+        if src is not None:
+            shard_state["src"] = src
+
         if self.lambda_coverage != 0.0:
             self._add_coverage_shard_state(shard_state, attns)
         if self.lambda_align != 0.0:

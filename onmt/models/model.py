@@ -116,7 +116,7 @@ class Actor(nn.Module):
 
     def forward(self, src, tgt, lengths, bptt=False, with_align=False, train_mode=TrainMode.ACTOR, tgt_field=None,
                 policy_strategy=PolicyStrategy.Categorical, policy_topk_sampling=-1, policy_sampling_temperature=1,
-                policy_topp_sampling=-1, epsilon=0):
+                policy_topp_sampling=-1):
 
         if train_mode == TrainMode.ACTOR:
             enc_state, memory_bank, lengths = self.encoder(src, lengths)
@@ -135,17 +135,17 @@ class Actor(nn.Module):
                 return self._step_wise_forward(src, tgt, lengths, bptt, with_align,
                                                tgt_field, policy_strategy,
                                                policy_topk_sampling, policy_sampling_temperature,
-                                               policy_topp_sampling, epsilon)
+                                               policy_topp_sampling)
         else:
             with torch.enable_grad():
                 return self._step_wise_forward(src, tgt, lengths, bptt, with_align,
                                                tgt_field, policy_strategy,
                                                policy_topk_sampling, policy_sampling_temperature,
-                                               policy_topp_sampling, epsilon)
+                                               policy_topp_sampling)
 
     def _step_wise_forward(self, src, tgt, lengths, bptt=False, with_align=False, tgt_field=None,
                            policy_strategy=PolicyStrategy.Categorical, policy_topk_sampling=-1,
-                           policy_sampling_temperature=1, policy_topp_sampling=-1, epsilon=0):
+                           policy_sampling_temperature=1, policy_topp_sampling=-1):
 
         enc_state, memory_bank, lengths = self.encoder(src, lengths)
 
@@ -163,7 +163,7 @@ class Actor(nn.Module):
                                           with_align=with_align)
 
             logits = self.generator[0:2](dec_out.squeeze(0))
-            gen_tok = self._choose_tok(logits, epsilon, policy_strategy,
+            gen_tok = self._choose_tok(logits, policy_strategy,
                                        policy_topk_sampling, policy_sampling_temperature, policy_topp_sampling)
             gen_seq = torch.cat([gen_seq, gen_tok], dim=0)
 
@@ -180,7 +180,7 @@ class Actor(nn.Module):
 
         return gen_seq, log_policy_dist
 
-    def _choose_tok(self, logits, epsilon, policy_strategy=PolicyStrategy.Categorical,
+    def _choose_tok(self, logits, policy_strategy=PolicyStrategy.Categorical,
                     policy_topk_sampling = -1, policy_sampling_temperature = 1, policy_topp_sampling = -1):
 
         if policy_strategy == PolicyStrategy.Greedy:
@@ -189,24 +189,6 @@ class Actor(nn.Module):
             gen_tok = self.sample_with_temperature(logits, sampling_temp=policy_sampling_temperature,
                                               keep_topk=policy_topk_sampling, keep_topp=policy_topp_sampling)[0]
         return gen_tok.unsqueeze(0).to('cuda')
-        # if policy_strategy == PolicyStrategy.Greedy:
-        #     return torch.argmax(logits, 2).unsqueeze(2)
-        # elif policy_strategy == PolicyStrategy.Categorical:
-        #     return self._categorical_sampling(scores)
-        # else:
-        #     vocab_size = scores.shape[2]
-        #     best_tok = torch.argmax(scores, 2).squeeze(0).cpu().numpy()
-        #     gen_tok = []
-        #
-        #     for tok in best_tok:
-        #
-        #         epsilon_greedy_policy = self._generate_epsilon_greedy_policy(tok, vocab_size, epsilon)
-        #
-        #         selected_tok = np.random.choice(list(range(0, vocab_size)), p=epsilon_greedy_policy)
-        #
-        #         gen_tok.append(selected_tok)
-        #
-        #     return torch.tensor(gen_tok).view(1,-1,1).to('cuda')
 
     def sample_topp(self, logits, keep_topp):
         sorted_logits, sorted_indices = torch.sort(logits,
@@ -525,9 +507,15 @@ class ACNMTModel(BaseModel):
     def generator(self):
         return self.actor.generator
 
-    def forward(self, src, tgt, lengths, bptt=False, with_align=False, epsilon=0):
+    def forward(self, src, tgt, lengths, bptt=False, with_align=False,
+                policy_strategy=PolicyStrategy.Categorical,
+                policy_topk_sampling=-1,
+                policy_sampling_temperature=1,
+                policy_topp_sampling=-1):
 
-        return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode, self.tgt_field, epsilon)
+        return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode,
+                          self.tgt_field, policy_strategy, policy_topk_sampling,
+                          policy_sampling_temperature, policy_topp_sampling)
 
     def update_dropout(self, dropout):
         self.actor.update_dropout(dropout)
@@ -586,12 +574,11 @@ class A2CNMTModel(BaseModel):
                 policy_strategy=PolicyStrategy.Categorical,
                 policy_topk_sampling=-1,
                 policy_sampling_temperature=1,
-                policy_topp_sampling=-1,
-                epsilon=0):
+                policy_topp_sampling=-1):
 
         return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode,
                           self.tgt_field, policy_strategy, policy_topk_sampling,
-                          policy_sampling_temperature, policy_topp_sampling, epsilon)
+                          policy_sampling_temperature, policy_topp_sampling)
 
     def update_dropout(self, dropout):
         self.actor.update_dropout(dropout)

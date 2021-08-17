@@ -11,7 +11,7 @@ from onmt.modules.embeddings import prepare_pretrained_embeddings
 from onmt.utils.logging import init_logger, logger
 
 from onmt.models.model_saver import load_checkpoint
-from onmt.train_single import main as single_main, a3c_main, _get_model_opts, _build_train_iter
+from onmt.train_single import main as single_main, async_main, _get_model_opts, _build_train_iter
 
 from onmt.utils.parse import ArgumentParser
 from onmt.opts import train_opts
@@ -109,36 +109,34 @@ def train(opt):
 
     checkpoint, fields, transforms_cls = _init_train(opt)
 
-    if opt.model_task == ModelTask.A3C and opt.train_mode in [TrainMode.CRITIC, TrainMode.AC]:
+    if opt.async or opt.model_task == ModelTask.A3C and opt.train_mode in [TrainMode.CRITIC, TrainMode.AC]:
         model_opt = _get_model_opts(opt, checkpoint=checkpoint)
 
         # if len(opt.gpu_ranks) > 2:
         global_gpu_id = opt.gpu_ranks[-1] + 1
 
-        print('Building the global A2C')
-        # Build a global A2C model.
-        global_a2c = build_model(model_opt, opt, fields, checkpoint, gpu_id=global_gpu_id)
-        global_a2c.share_memory()
-        # global_a2c.to('cuda:'+ str(global_gpu_id))
+        # Build a global model.
+        global_model = build_model(model_opt, opt, fields, checkpoint, gpu_id=global_gpu_id)
+        global_model.share_memory()
 
         # Build optimizer.
         if opt.train_from and checkpoint is not None:
-            actor_optim = Optimizer.from_opt(global_a2c.actor, opt, checkpoint=checkpoint, ac_optim_opt='actor')
-            critic_optim = Optimizer.from_opt(global_a2c.critic, opt, checkpoint=checkpoint, ac_optim_opt='critic')
+            actor_optim = Optimizer.from_opt(global_model.actor, opt, checkpoint=checkpoint, ac_optim_opt='actor')
+            critic_optim = Optimizer.from_opt(global_model.critic, opt, checkpoint=checkpoint, ac_optim_opt='critic')
             optim = (actor_optim, critic_optim)
         else:
-            actor_optim = Optimizer.from_opt(global_a2c.actor, opt, checkpoint=checkpoint)
-            critic_optim = Optimizer.from_opt(global_a2c.critic, opt, checkpoint=checkpoint)
+            actor_optim = Optimizer.from_opt(global_model.actor, opt, checkpoint=checkpoint)
+            critic_optim = Optimizer.from_opt(global_model.critic, opt, checkpoint=checkpoint)
             optim = (actor_optim, critic_optim)
 
         # unsuper_reward = UnsuperReward(fields, opt.w_fluency, opt.w_tlss, opt.w_slss, global_gpu_id, opt.norm_unsuper_reward)
         # unsuper_reward = None
 
         train_process = partial(
-            a3c_main,
-            global_model=global_a2c,
+            async_main,
+            global_model=global_model,
             optim=optim,
-            global_gpu_id=global_gpu_id,
+            # global_gpu_id=global_gpu_id,
             # unsuper_reward=unsuper_reward,
             model_opt=model_opt,
             fields=fields,

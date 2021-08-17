@@ -12,7 +12,7 @@ from onmt.utils.logging import init_logger, logger
 from onmt.utils.parse import ArgumentParser
 
 from onmt.inputters.dynamic_iterator import build_dynamic_dataset_iter
-from onmt.constants import ModelTask
+from onmt.constants import ModelTask, TrainMode
 from onmt.modules.rewards import UnsuperReward
 
 def configure_process(opt, device_id):
@@ -85,8 +85,15 @@ def main(opt, fields, transforms_cls, checkpoint, device_id,
     # Build model saver
     model_saver = build_model_saver(model_opt, opt, model, fields, optim)
 
+    unsuper_reward = None
+    if opt.train_mode != TrainMode.ACTOR:
+        unsuper_reward = UnsuperReward(fields, opt.w_fluency, opt.w_tlss,
+                                       opt.w_slss, device_id, opt.norm_unsuper_reward)
+
     trainer = build_trainer(
-        opt, device_id, model, fields, optim, model_saver=model_saver)
+        opt, device_id, model, fields,
+        optim, model_saver=model_saver,
+        unsuper_reward=unsuper_reward)
 
     if batch_queue is None:
         _train_iter = _build_train_iter(opt, fields, transforms_cls)
@@ -128,7 +135,7 @@ def main(opt, fields, transforms_cls, checkpoint, device_id,
     if trainer.report_manager.tensorboard_writer is not None:
         trainer.report_manager.tensorboard_writer.close()
 
-def a3c_main(global_model, optim, global_gpu_id, model_opt, opt, fields, transforms_cls, checkpoint, device_id,
+def async_main(global_model, optim, model_opt, opt, fields, transforms_cls, checkpoint, device_id,
          batch_queue=None, semaphore=None):
     """Start training on `device_id`."""
     # NOTE: It's important that ``opt`` has been validated and updated
@@ -147,7 +154,8 @@ def a3c_main(global_model, optim, global_gpu_id, model_opt, opt, fields, transfo
 
     trainer = build_trainer(
         opt, device_id, model, fields, optim,
-        model_saver=model_saver, global_model=global_model, unsuper_reward=unsuper_reward)
+        model_saver=model_saver, global_model=global_model,
+        unsuper_reward=unsuper_reward)
 
     if batch_queue is None:
         _train_iter = _build_train_iter(opt, fields, transforms_cls)

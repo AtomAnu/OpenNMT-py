@@ -10,6 +10,7 @@
 """
 
 import torch
+import torch.nn as nn
 import traceback
 
 import onmt.utils
@@ -74,63 +75,60 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global
                                earlystopper=earlystopper,
                                dropout=dropout,
                                dropout_steps=dropout_steps)
-    elif opt.model_task in [ModelTask.AC, ModelTask.A2C]:
-        actor_optim, critic_optim = optim
 
-        trainer = onmt.ACTrainer(model, train_loss, valid_loss, actor_optim, critic_optim,
-                                 opt.epsilon, opt.epsilon_decay, opt.use_target_network, opt.target_network_update_period,
-                                 trunc_size, shard_size, norm_method,
-                                 accum_count, accum_steps,
-                                 n_gpu, gpu_rank,
-                                 gpu_verbose_level, report_manager,
-                                 with_align=True if opt.lambda_align > 0 else False,
-                                 model_saver=model_saver if gpu_rank <= 0 else None,
-                                 average_decay=average_decay,
-                                 average_every=average_every,
-                                 model_dtype=opt.model_dtype,
-                                 earlystopper=earlystopper,
-                                 dropout=dropout,
-                                 dropout_steps=dropout_steps)
-    elif opt.model_task == ModelTask.A3C and opt.train_mode == TrainMode.ACTOR:
-        actor_optim, critic_optim = optim
+    elif opt.async or opt.model_task == ModelTask.A3C and opt.train_mode in [TrainMode.CRITIC, TrainMode.AC]:
 
-        trainer = onmt.ACTrainer(model, train_loss, valid_loss, actor_optim, critic_optim,
-                                 opt.epsilon, opt.epsilon_decay, opt.use_target_network, opt.target_network_update_period,
-                                 trunc_size, shard_size, norm_method,
-                                 accum_count, accum_steps,
-                                 n_gpu, gpu_rank,
-                                 gpu_verbose_level, report_manager,
-                                 with_align=True if opt.lambda_align > 0 else False,
-                                 model_saver=model_saver if gpu_rank <= 0 else None,
-                                 average_decay=average_decay,
-                                 average_every=average_every,
-                                 model_dtype=opt.model_dtype,
-                                 earlystopper=earlystopper,
-                                 dropout=dropout,
-                                 dropout_steps=dropout_steps)
-    else:
         actor_optim, critic_optim = optim
         policy_strategy = opt.policy_strategy[gpu_rank]
         policy_topk_sampling = opt.policy_topk_sampling[gpu_rank]
         policy_sampling_temperature = opt.policy_sampling_temperature[gpu_rank]
         policy_topp_sampling = opt.policy_topp_sampling[gpu_rank]
 
-        trainer = onmt.A3CTrainer(global_model, model, train_loss, valid_loss, actor_optim, critic_optim,
-                                  policy_strategy, policy_topk_sampling, policy_sampling_temperature, policy_topp_sampling,
-                                  opt.epsilon, opt.epsilon_decay, opt.use_target_network,
-                                  opt.target_network_update_period,
-                                  trunc_size, shard_size, norm_method,
-                                  accum_count, accum_steps,
-                                  n_gpu, gpu_rank,
-                                  gpu_verbose_level, report_manager,
-                                  with_align=True if opt.lambda_align > 0 else False,
-                                  model_saver=model_saver if gpu_rank <= 0 else None,
-                                  average_decay=average_decay,
-                                  average_every=average_every,
-                                  model_dtype=opt.model_dtype,
-                                  earlystopper=earlystopper,
-                                  dropout=dropout,
-                                  dropout_steps=dropout_steps)
+        trainer = onmt.AsyncACTrainer(global_model, model, train_loss, valid_loss, actor_optim, critic_optim,
+                                      policy_strategy, policy_topk_sampling, policy_sampling_temperature,
+                                      policy_topp_sampling,
+                                      opt.use_target_network,
+                                      opt.target_network_update_period,
+                                      trunc_size, shard_size, norm_method,
+                                      accum_count, accum_steps,
+                                      n_gpu, gpu_rank,
+                                      gpu_verbose_level, report_manager,
+                                      with_align=True if opt.lambda_align > 0 else False,
+                                      model_saver=model_saver if gpu_rank <= 0 else None,
+                                      average_decay=average_decay,
+                                      average_every=average_every,
+                                      model_dtype=opt.model_dtype,
+                                      earlystopper=earlystopper,
+                                      dropout=dropout,
+                                      dropout_steps=dropout_steps)
+
+    else:
+        actor_optim, critic_optim = optim
+
+        policy_strategy, policy_topk_sampling, \
+        policy_sampling_temperature, policy_topp_sampling = None, None, None, None
+
+        if opt.train_mode != TrainMode.ACTOR:
+            policy_strategy = opt.policy_strategy[gpu_rank]
+            policy_topk_sampling = opt.policy_topk_sampling[gpu_rank]
+            policy_sampling_temperature = opt.policy_sampling_temperature[gpu_rank]
+            policy_topp_sampling = opt.policy_topp_sampling[gpu_rank]
+
+        trainer = onmt.SyncACTrainer(model, train_loss, valid_loss, actor_optim, critic_optim,
+                                     policy_strategy, policy_topk_sampling, policy_sampling_temperature,
+                                     policy_topp_sampling, opt.use_target_network, opt.target_network_update_period,
+                                     trunc_size, shard_size, norm_method,
+                                     accum_count, accum_steps,
+                                     n_gpu, gpu_rank,
+                                     gpu_verbose_level, report_manager,
+                                     with_align=True if opt.lambda_align > 0 else False,
+                                     model_saver=model_saver if gpu_rank <= 0 else None,
+                                     average_decay=average_decay,
+                                     average_every=average_every,
+                                     model_dtype=opt.model_dtype,
+                                     earlystopper=earlystopper,
+                                     dropout=dropout,
+                                     dropout_steps=dropout_steps)
 
     return trainer
 
@@ -542,7 +540,7 @@ class Trainer(object):
                 step, train_stats=train_stats,
                 valid_stats=valid_stats)
 
-class ACTrainer(object):
+class SyncACTrainer(object):
     """
     Class that controls the training process for AC and A2C models.
 
@@ -569,7 +567,8 @@ class ACTrainer(object):
     """
 
     def __init__(self, model, train_loss, valid_loss, actor_optim, critic_optim,
-                 epsilon, epsilon_decay, use_target_network, target_network_update_period,
+                 policy_strategy, policy_topk_sampling, policy_sampling_temperature, policy_topp_sampling,
+                 use_target_network, target_network_update_period,
                  trunc_size=0, shard_size=32,
                  norm_method="sents", accum_count=[1],
                  accum_steps=[0],
@@ -583,8 +582,10 @@ class ACTrainer(object):
         self.valid_loss = valid_loss
         self.actor_optim = actor_optim
         self.critic_optim = critic_optim
-        self.epsilon = epsilon
-        self.epsilon_decay = epsilon_decay
+        self.policy_strategy = policy_strategy
+        self.policy_topk_sampling = policy_topk_sampling
+        self.policy_sampling_temperature = policy_sampling_temperature
+        self.policy_topp_sampling = policy_topp_sampling
         self.use_target_network = use_target_network
         self.target_network = copy.deepcopy(model.critic).cuda() if use_target_network else None
         self.target_network_update_period = target_network_update_period
@@ -664,9 +665,6 @@ class ACTrainer(object):
                 self.moving_average[i] = \
                     (1 - average_decay) * avg + \
                     cpt.detach().float() * average_decay
-
-    def _update_epsilon(self):
-        self.epsilon *= self.epsilon_decay
 
     def _update_target_network(self):
         self.target_network = copy.deepcopy(self.model.critic).cuda()
@@ -762,14 +760,10 @@ class ACTrainer(object):
             if train_steps > 0 and step >= train_steps:
                 break
 
-            # Update epsilon for the epsilon-greedy policy
-            self._update_epsilon()
             # Update target critic
             if self.use_target_network and i % self.target_network_update_period == 0:
                 print('Updating the target network at step: {}'.format(i))
                 self._update_target_network()
-
-            print('Current Epsilon: {}'.format(self.epsilon))
 
         if self.model_saver is not None:
             self.model_saver.save(step, moving_average=self.moving_average)
@@ -806,10 +800,11 @@ class ACTrainer(object):
                 with torch.cuda.amp.autocast(enabled=self.actor_optim.amp):
                     # F-prop through the model.
                     outputs, attns = valid_model(src, tgt, src_lengths,
-                                                 with_align=self.with_align)
+                                                 with_align=self.with_align,
+                                                 policy_strategy=PolicyStrategy.Greedy)
 
                     # Compute loss.
-                    _, batch_stats = self.valid_loss(batch, outputs, attns, target_critic=self.target_network)
+                    _, batch_stats = self.valid_loss(batch, outputs, attns, target_critic=self.target_network, src=src)
 
                 # Update statistics.
                 stats.update(batch_stats)
@@ -820,6 +815,9 @@ class ACTrainer(object):
 
         # Set model back to training mode.
         valid_model.train()
+
+        # TODO consider removing this line
+        valid_model = None
 
         return stats
 
@@ -864,7 +862,11 @@ class ACTrainer(object):
 
                     outputs, attns = self.model(
                         src, tgt, src_lengths, bptt=bptt,
-                        with_align=self.with_align, epsilon=self.epsilon)
+                        with_align=self.with_align,
+                        policy_strategy=self.policy_strategy,
+                        policy_topk_sampling=self.policy_topk_sampling,
+                        policy_sampling_temperature=self.policy_sampling_temperature,
+                        policy_topp_sampling=self.policy_topp_sampling)
                     bptt = True
 
                     # 3. Compute loss.
@@ -876,7 +878,8 @@ class ACTrainer(object):
                         normalization=normalization,
                         shard_size=self.shard_size,
                         trunc_start=j,
-                        trunc_size=trunc_size)
+                        trunc_size=trunc_size,
+                        src=src)
 
                     actor_loss, critic_loss = loss
 
@@ -904,7 +907,9 @@ class ACTrainer(object):
                                  and p.grad is not None]
                         onmt.utils.distributed.all_reduce_and_rescale_tensors(
                             grads, float(1))
+                    gnorm_actor = nn.utils.clip_grad_norm(self.model.actor.parameters(), 5.0)
                     self.actor_optim.step()
+                    gnorm_critic = nn.utils.clip_grad_norm(self.model.critic.parameters(), 5.0)
                     self.critic_optim.step()
 
                 # If truncated, don't backprop fully.
@@ -923,7 +928,9 @@ class ACTrainer(object):
                          and p.grad is not None]
                 onmt.utils.distributed.all_reduce_and_rescale_tensors(
                     grads, float(1))
+            gnorm_actor = nn.utils.clip_grad_norm(self.model.actor.parameters(), 5.0)
             self.actor_optim.step()
+            gnorm_critic = nn.utils.clip_grad_norm(self.model.critic.parameters(), 5.0)
             self.critic_optim.step()
 
     def _start_report_manager(self, start_time=None):
@@ -981,7 +988,7 @@ class ACTrainer(object):
                 step, train_stats=train_stats,
                 valid_stats=valid_stats)
 
-class A3CTrainer(object):
+class AsyncACTrainer(object):
     """
     Class that controls the training process for A3C models.
 
@@ -1009,7 +1016,7 @@ class A3CTrainer(object):
 
     def __init__(self, global_model, model, train_loss, valid_loss, actor_optim, critic_optim,
                  policy_strategy, policy_topk_sampling, policy_sampling_temperature, policy_topp_sampling,
-                 epsilon, epsilon_decay, use_target_network, target_network_update_period,
+                 use_target_network, target_network_update_period,
                  trunc_size=0, shard_size=32,
                  norm_method="sents", accum_count=[1],
                  accum_steps=[0],
@@ -1028,8 +1035,6 @@ class A3CTrainer(object):
         self.policy_topk_sampling = policy_topk_sampling
         self.policy_sampling_temperature = policy_sampling_temperature
         self.policy_topp_sampling = policy_topp_sampling
-        self.epsilon = epsilon
-        self.epsilon_decay = epsilon_decay
         self.use_target_network = use_target_network
         self.target_network = copy.deepcopy(model.critic).cuda() if use_target_network else None
         self.target_network_update_period = target_network_update_period
@@ -1110,9 +1115,6 @@ class A3CTrainer(object):
                     (1 - average_decay) * avg + \
                     cpt.detach().float() * average_decay
 
-    def _update_epsilon(self):
-        self.epsilon *= self.epsilon_decay
-
     def _update_target_network(self):
         self.target_network = copy.deepcopy(self.model.critic).cuda()
 
@@ -1160,10 +1162,10 @@ class A3CTrainer(object):
                             n_minibatch %d"
                             % (self.gpu_rank, i + 1, len(batches)))
 
-            if self.n_gpu > 1:
-                normalization = sum(onmt.utils.distributed
-                                    .all_gather_list
-                                    (normalization))
+            # if self.n_gpu > 1:
+            #     normalization = sum(onmt.utils.distributed
+            #                         .all_gather_list
+            #                         (normalization))
 
             self._gradient_accumulation(
                 batches, normalization, total_stats,
@@ -1207,14 +1209,10 @@ class A3CTrainer(object):
             if train_steps > 0 and step >= train_steps:
                 break
 
-            # Update epsilon for the epsilon-greedy policy
-            self._update_epsilon()
             # Update target critic
             if self.use_target_network and i % self.target_network_update_period == 0:
                 print('Updating the target network at step: {}'.format(i))
                 self._update_target_network()
-
-            print('Current Epsilon: {}'.format(self.epsilon))
 
         if self.model_saver is not None:
             self.model_saver.save(step, moving_average=self.moving_average)
@@ -1317,8 +1315,7 @@ class A3CTrainer(object):
                         policy_strategy=self.policy_strategy,
                         policy_topk_sampling=self.policy_topk_sampling,
                         policy_sampling_temperature=self.policy_sampling_temperature,
-                        policy_topp_sampling=self.policy_topp_sampling,
-                        epsilon=self.epsilon)
+                        policy_topp_sampling=self.policy_topp_sampling)
                     bptt = True
 
                     # 3. Compute loss.
@@ -1365,7 +1362,9 @@ class A3CTrainer(object):
                                 self.global_model.critic.parameters()):
                             global_critic_param._grad = local_critic_param.grad.to(global_critic_param.device)
 
+                    gnorm_actor = nn.utils.clip_grad_norm(self.global_model.actor.parameters(), 5.0)
                     self.actor_optim.step()
+                    gnorm_critic = nn.utils.clip_grad_norm(self.global_model.critic.parameters(), 5.0)
                     self.critic_optim.step()
 
                     if actor_loss is not None: self.model.actor.load_state_dict(self.global_model.actor.state_dict())
@@ -1393,7 +1392,9 @@ class A3CTrainer(object):
                         self.global_model.critic.parameters()):
                     global_critic_param._grad = local_critic_param.grad.to(global_critic_param.device)
 
+            gnorm_actor = nn.utils.clip_grad_norm(self.global_model.actor.parameters(), 5.0)
             self.actor_optim.step()
+            gnorm_critic = nn.utils.clip_grad_norm(self.global_model.critic.parameters(), 5.0)
             self.critic_optim.step()
 
             if actor_loss is not None: self.model.actor.load_state_dict(self.global_model.actor.state_dict())
