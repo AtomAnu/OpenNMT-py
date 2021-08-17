@@ -105,7 +105,7 @@ class UnsuperReward():
 
                 tok_idx = int(hyp_ids[hyp_row, col])
 
-                if tok_idx == self.tgt_eos:
+                if tok_idx == self.tgt_eos or tok_idx == self.tgt_pad:
                     break
                 else:
                     if tok_idx in [self.tgt_bos, self.tgt_unk]:
