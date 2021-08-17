@@ -110,6 +110,9 @@ def train(opt):
     checkpoint, fields, transforms_cls = _init_train(opt)
 
     if opt.async or opt.model_task == ModelTask.A3C and opt.train_mode in [TrainMode.CRITIC, TrainMode.AC]:
+
+        print("Actor LR ***".format(opt.actor_learning_rate))
+
         model_opt = _get_model_opts(opt, checkpoint=checkpoint)
 
         # if len(opt.gpu_ranks) > 2:
