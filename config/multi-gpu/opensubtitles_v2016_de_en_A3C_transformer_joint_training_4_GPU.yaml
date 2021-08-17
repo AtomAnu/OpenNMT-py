@@ -28,7 +28,7 @@ save_model: data/OpenSubtitles-v2016/joint_training/a3c/model
 train_from: data/OpenSubtitles-v2016/critic_pretraining/a3c/model_step_700.pt
 reset_optim: "none"
 keep_checkpoint: 50
-save_checkpoint_steps: 10000
+save_checkpoint_steps: 100
 average_decay: 0.0005
 seed: 1234
 report_every: 1
