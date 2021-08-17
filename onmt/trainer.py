@@ -1151,6 +1151,10 @@ class AsyncACTrainer(object):
 
         for i, (batches, normalization) in enumerate(
                 self._accum_batches(train_iter)):
+
+            logger.info("_learning_rate {}".format(self.actor_optim._learning_rate))
+            logger.info("learning_rate() {}".format(self.actor_optim.learning_rate()))
+
             step = self.actor_optim.training_step
             # UPDATE DROPOUT
             self._maybe_update_dropout(step)
