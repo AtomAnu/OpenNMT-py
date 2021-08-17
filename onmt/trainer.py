@@ -907,9 +907,9 @@ class SyncACTrainer(object):
                                  and p.grad is not None]
                         onmt.utils.distributed.all_reduce_and_rescale_tensors(
                             grads, float(1))
-                    gnorm_actor = nn.utils.clip_grad_norm(self.model.actor.parameters(), 5.0)
+                    gnorm_actor = nn.utils.clip_grad_norm_(self.model.actor.parameters(), 5.0)
                     self.actor_optim.step()
-                    gnorm_critic = nn.utils.clip_grad_norm(self.model.critic.parameters(), 5.0)
+                    gnorm_critic = nn.utils.clip_grad_norm_(self.model.critic.parameters(), 5.0)
                     self.critic_optim.step()
 
                 # If truncated, don't backprop fully.
@@ -928,9 +928,9 @@ class SyncACTrainer(object):
                          and p.grad is not None]
                 onmt.utils.distributed.all_reduce_and_rescale_tensors(
                     grads, float(1))
-            gnorm_actor = nn.utils.clip_grad_norm(self.model.actor.parameters(), 5.0)
+            gnorm_actor = nn.utils.clip_grad_norm_(self.model.actor.parameters(), 5.0)
             self.actor_optim.step()
-            gnorm_critic = nn.utils.clip_grad_norm(self.model.critic.parameters(), 5.0)
+            gnorm_critic = nn.utils.clip_grad_norm_(self.model.critic.parameters(), 5.0)
             self.critic_optim.step()
 
     def _start_report_manager(self, start_time=None):
@@ -1362,9 +1362,9 @@ class AsyncACTrainer(object):
                                 self.global_model.critic.parameters()):
                             global_critic_param._grad = local_critic_param.grad.to(global_critic_param.device)
 
-                    gnorm_actor = nn.utils.clip_grad_norm(self.global_model.actor.parameters(), 5.0)
+                    gnorm_actor = nn.utils.clip_grad_norm_(self.global_model.actor.parameters(), 5.0)
                     self.actor_optim.step()
-                    gnorm_critic = nn.utils.clip_grad_norm(self.global_model.critic.parameters(), 5.0)
+                    gnorm_critic = nn.utils.clip_grad_norm_(self.global_model.critic.parameters(), 5.0)
                     self.critic_optim.step()
 
                     if actor_loss is not None: self.model.actor.load_state_dict(self.global_model.actor.state_dict())
@@ -1392,9 +1392,9 @@ class AsyncACTrainer(object):
                         self.global_model.critic.parameters()):
                     global_critic_param._grad = local_critic_param.grad.to(global_critic_param.device)
 
-            gnorm_actor = nn.utils.clip_grad_norm(self.global_model.actor.parameters(), 5.0)
+            gnorm_actor = nn.utils.clip_grad_norm_(self.global_model.actor.parameters(), 5.0)
             self.actor_optim.step()
-            gnorm_critic = nn.utils.clip_grad_norm(self.global_model.critic.parameters(), 5.0)
+            gnorm_critic = nn.utils.clip_grad_norm_(self.global_model.critic.parameters(), 5.0)
             self.critic_optim.step()
 
             if actor_loss is not None: self.model.actor.load_state_dict(self.global_model.actor.state_dict())
