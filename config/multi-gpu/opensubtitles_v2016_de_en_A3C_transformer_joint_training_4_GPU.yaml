@@ -54,7 +54,7 @@ accum_steps: [0]
 model_dtype: "fp32"
 optim: "sharedadam"
 learning_rate: 2
-warmup_steps: 1
+warmup_steps: 0
 decay_method: "none"
 start_decay_steps: 0
 learning_rate_decay: 0.9
@@ -78,6 +78,7 @@ w_fluency: 1
 w_tlss: 0
 w_slss: 1
 norm_unsuper_reward: true
+lambda_xent: 0.1
 lambda_var: 0.25
 use_target_network: false
 target_network_update_period: 500
