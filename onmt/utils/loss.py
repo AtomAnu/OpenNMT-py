@@ -827,10 +827,7 @@ class A2CLossCompute(LossComputeBase):
         else:
             future_V = torch.zeros(V.shape[0]-1, V.shape[1], V.shape[2]).to('cuda')
 
-            print('Future V shape: {}'.format(future_V[self.multi_step:].shape))
-            print('V shape: {}'.format(V[self.multi_step:].shape))
-
-            future_V[self.multi_step:] += V[self.multi_step:]
+            future_V[:V[self.multi_step:].shape[0]] += V[self.multi_step:]
             return future_V
 
     def _add_coverage_shard_state(self, shard_state, attns):
