@@ -43,11 +43,11 @@ pool_factor: 8192
 world_size: 3
 gpu_ranks: [0,1,2]
 batch_type: "tokens"
-batch_size: 2000
-valid_batch_size: 2000
+batch_size: 4096
+valid_batch_size: 4096
 batch_size_multiple: 1
 max_generator_batches: 0
-accum_count: [3]
+accum_count: [1]
 accum_steps: [0]
 
 # Optimization
@@ -69,9 +69,9 @@ normalization: "tokens"
 model_task: a3c
 train_mode: ac
 policy_strategy: [categorical, categorical, categorical]
-policy_topk_sampling: [-1,-1,-1]
-policy_sampling_temperature: [1.0,0.9,0.7]
-policy_topp_sampling: [1.0,0.7,0.5]
+policy_topk_sampling: [10,50,100]
+policy_sampling_temperature: [1.0,1.0,1.0]
+policy_topp_sampling: [-1,-1,-1]
 discount_factor: 0.5
 multi_step: 5
 w_fluency: 1
