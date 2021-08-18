@@ -116,20 +116,26 @@ class Actor(nn.Module):
 
     def forward(self, src, tgt, lengths, bptt=False, with_align=False, train_mode=TrainMode.ACTOR, tgt_field=None,
                 policy_strategy=PolicyStrategy.Categorical, policy_topk_sampling=-1, policy_sampling_temperature=1,
-                policy_topp_sampling=-1):
+                policy_topp_sampling=-1, gen_seq=None):
 
-        if train_mode == TrainMode.ACTOR:
+        if train_mode == TrainMode.ACTOR or gen_seq is not None:
             enc_state, memory_bank, lengths = self.encoder(src, lengths)
 
             if not bptt:
                 self.decoder.init_state(src, memory_bank, enc_state)
 
-            dec_in = tgt[:-1]  # exclude last target from inputs
+            if gen_seq is None:
+                dec_in = tgt[:-1]  # exclude last target from inputs
+            else:
+                dec_in = gen_seq[:-1]
             dec_out, attns = self.decoder(dec_in, memory_bank,
                                           memory_lengths=lengths,
                                           with_align=with_align)
+            if gen_seq is None:
+                return dec_out, attns
+            else:
+                return self.generator(dec_out)
 
-            return dec_out, attns
         elif train_mode == TrainMode.CRITIC:
             with torch.no_grad():
                 return self._step_wise_forward(src, tgt, lengths, bptt, with_align,

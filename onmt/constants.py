@@ -30,6 +30,7 @@ class ModelTask(object):
     AC = 'ac'
     A2C = 'a2c'
     A3C = 'a3c'
+    PPO = 'ppo'
 
 class TrainMode:
     ACTOR = 'actor'
