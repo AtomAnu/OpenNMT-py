@@ -34,6 +34,8 @@ def _get_model_opts(opt, checkpoint=None):
             opt.tensorboard_log_dir_dated = model_opt.tensorboard_log_dir_dated
         # Override checkpoint's update_embeddings as it defaults to false
         model_opt.update_vocab = opt.update_vocab
+        # Override model task in casing of using pre-trained models from other tasks
+        model_opt.model_task = opt.model_task
         # Override train mode during the current configuration
         model_opt.train_mode = opt.train_mode
     else:

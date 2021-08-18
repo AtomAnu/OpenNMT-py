@@ -1767,9 +1767,9 @@ class PPOTrainer(object):
 
     def _gradient_accumulation(self, true_batches, normalization, total_stats,
                                report_stats):
-        if self.accum_count > 1:
-            self.actor_optim.zero_grad()
-            self.critic_optim.zero_grad()
+        # if self.accum_count > 1:
+        #     self.actor_optim.zero_grad()
+        #     self.critic_optim.zero_grad()
 
         for k, batch in enumerate(true_batches):
             target_size = batch.tgt.size(0)
@@ -1792,32 +1792,36 @@ class PPOTrainer(object):
                 tgt = tgt_outer[j: j + trunc_size]
 
                 # 2. F-prop all but generator.
-                if self.accum_count == 1:
-                    self.actor_optim.zero_grad()
-                    self.critic_optim.zero_grad()
+                # if self.accum_count == 1:
+                #     self.actor_optim.zero_grad()
+                #     self.critic_optim.zero_grad()
 
                 with torch.cuda.amp.autocast(enabled=self.actor_optim.amp):
 
                     """
                     if opt.train_mode != 'actor' 
                     outputs -> generated sequence(s)
-                    attns -> policy distribution (exp(actor's generator scores))
+                    attns -> log policy distribution 
                     """
 
-                    outputs, attns = self.model(
+                    gen_seq, old_log_pol_dist = self.model(
                         src, tgt, src_lengths, bptt=bptt,
                         with_align=self.with_align,
                         policy_strategy=self.policy_strategy,
                         policy_topk_sampling=self.policy_topk_sampling,
                         policy_sampling_temperature=self.policy_sampling_temperature,
                         policy_topp_sampling=self.policy_topp_sampling)
+
+
+
+
                     bptt = True
 
                     # 3. Compute loss.
                     loss, batch_stats = self.train_loss(
                         batch,
-                        outputs,
-                        attns,
+                        gen_seq,
+                        old_log_pol_dist,
                         target_critic=self.target_network,
                         normalization=normalization,
                         shard_size=self.shard_size,
@@ -1842,19 +1846,19 @@ class PPOTrainer(object):
                     logger.info("At step %d, we removed a batch - accum %d",
                                 self.actor_optim.training_step, k)
 
-                # 4. Update the parameters and statistics.
-                if self.accum_count == 1:
-                    # Multi GPU gradient gather
-                    if self.n_gpu > 1:
-                        grads = [p.grad.data for p in self.model.parameters()
-                                 if p.requires_grad
-                                 and p.grad is not None]
-                        onmt.utils.distributed.all_reduce_and_rescale_tensors(
-                            grads, float(1))
-                    gnorm_actor = nn.utils.clip_grad_norm_(self.model.actor.parameters(), 5.0)
-                    self.actor_optim.step()
-                    gnorm_critic = nn.utils.clip_grad_norm_(self.model.critic.parameters(), 5.0)
-                    self.critic_optim.step()
+                # # 4. Update the parameters and statistics.
+                # if self.accum_count == 1:
+                #     # Multi GPU gradient gather
+                #     if self.n_gpu > 1:
+                #         grads = [p.grad.data for p in self.model.parameters()
+                #                  if p.requires_grad
+                #                  and p.grad is not None]
+                #         onmt.utils.distributed.all_reduce_and_rescale_tensors(
+                #             grads, float(1))
+                #     gnorm_actor = nn.utils.clip_grad_norm_(self.model.actor.parameters(), 5.0)
+                #     self.actor_optim.step()
+                #     gnorm_critic = nn.utils.clip_grad_norm_(self.model.critic.parameters(), 5.0)
+                #     self.critic_optim.step()
 
                 # If truncated, don't backprop fully.
                 # TO CHECK
@@ -1863,19 +1867,19 @@ class PPOTrainer(object):
                 if self.model.decoder.state is not None:
                     self.model.decoder.detach_state()
 
-        # in case of multi step gradient accumulation,
-        # update only after accum batches
-        if self.accum_count > 1:
-            if self.n_gpu > 1:
-                grads = [p.grad.data for p in self.model.parameters()
-                         if p.requires_grad
-                         and p.grad is not None]
-                onmt.utils.distributed.all_reduce_and_rescale_tensors(
-                    grads, float(1))
-            gnorm_actor = nn.utils.clip_grad_norm_(self.model.actor.parameters(), 5.0)
-            self.actor_optim.step()
-            gnorm_critic = nn.utils.clip_grad_norm_(self.model.critic.parameters(), 5.0)
-            self.critic_optim.step()
+        # # in case of multi step gradient accumulation,
+        # # update only after accum batches
+        # if self.accum_count > 1:
+        #     if self.n_gpu > 1:
+        #         grads = [p.grad.data for p in self.model.parameters()
+        #                  if p.requires_grad
+        #                  and p.grad is not None]
+        #         onmt.utils.distributed.all_reduce_and_rescale_tensors(
+        #             grads, float(1))
+        #     gnorm_actor = nn.utils.clip_grad_norm_(self.model.actor.parameters(), 5.0)
+        #     self.actor_optim.step()
+        #     gnorm_critic = nn.utils.clip_grad_norm_(self.model.critic.parameters(), 5.0)
+        #     self.critic_optim.step()
 
     def _start_report_manager(self, start_time=None):
         """

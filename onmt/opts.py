@@ -382,6 +382,12 @@ def model_opts(parser):
         type=float,
         default=0.0001,
         help="Critic optimizer learning rate")
+    group.add(
+        "-ppo-k-epochs",
+        "--ppo-k-epochs",
+        type=int,
+        default=80,
+        help="[For PPO] Update policy for k epochs in one PPO update")
 
 
     # Encoder-Decoder Options
