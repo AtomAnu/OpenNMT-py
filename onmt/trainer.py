@@ -61,7 +61,7 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global
 
     report_manager = onmt.utils.build_report_manager(opt, gpu_rank)
 
-    special_tok_mask = prepare_special_tok_mask(tgt_field)
+    special_tok_mask = prepare_special_tok_mask(fields["tgt"])
 
     logger.info('Special Mask: {}'.format(special_tok_mask))
 
