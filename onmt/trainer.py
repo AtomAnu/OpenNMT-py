@@ -63,8 +63,6 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global
 
     special_tok_mask = prepare_special_tok_mask(fields["tgt"])
 
-    logger.info('Special Mask: {}'.format(special_tok_mask))
-
     if opt.model_task not in [ModelTask.AC, ModelTask.A2C, ModelTask.A3C]:
 
         trainer = onmt.Trainer(model, train_loss, valid_loss, optim, trunc_size,
@@ -91,7 +89,7 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global
 
         trainer = onmt.AsyncACTrainer(global_model, model, train_loss, valid_loss, actor_optim, critic_optim,
                                       policy_strategy, policy_topk_sampling, policy_sampling_temperature,
-                                      policy_topp_sampling,
+                                      policy_topp_sampling, special_tok_mask,
                                       opt.use_target_network,
                                       opt.target_network_update_period,
                                       trunc_size, shard_size, norm_method,
@@ -121,7 +119,8 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global
 
         trainer = onmt.SyncACTrainer(model, train_loss, valid_loss, actor_optim, critic_optim,
                                      policy_strategy, policy_topk_sampling, policy_sampling_temperature,
-                                     policy_topp_sampling, opt.use_target_network, opt.target_network_update_period,
+                                     policy_topp_sampling, special_tok_mask,
+                                     opt.use_target_network, opt.target_network_update_period,
                                      trunc_size, shard_size, norm_method,
                                      accum_count, accum_steps,
                                      n_gpu, gpu_rank,
@@ -586,7 +585,7 @@ class SyncACTrainer(object):
 
     def __init__(self, model, train_loss, valid_loss, actor_optim, critic_optim,
                  policy_strategy, policy_topk_sampling, policy_sampling_temperature, policy_topp_sampling,
-                 use_target_network, target_network_update_period,
+                 special_tok_mask, use_target_network, target_network_update_period,
                  trunc_size=0, shard_size=32,
                  norm_method="sents", accum_count=[1],
                  accum_steps=[0],
@@ -604,6 +603,7 @@ class SyncACTrainer(object):
         self.policy_topk_sampling = policy_topk_sampling
         self.policy_sampling_temperature = policy_sampling_temperature
         self.policy_topp_sampling = policy_topp_sampling
+        self.special_tok_mask = special_tok_mask
         self.use_target_network = use_target_network
         self.target_network = copy.deepcopy(model.critic).cuda() if use_target_network else None
         self.target_network_update_period = target_network_update_period
@@ -819,7 +819,8 @@ class SyncACTrainer(object):
                     # F-prop through the model.
                     outputs, attns = valid_model(src, tgt, src_lengths,
                                                  with_align=self.with_align,
-                                                 policy_strategy=PolicyStrategy.Greedy)
+                                                 policy_strategy=PolicyStrategy.Greedy,
+                                                 special_tok_mask=self.special_tok_mask)
 
                     # Compute loss.
                     _, batch_stats = self.valid_loss(batch, outputs, attns, target_critic=self.target_network, src=src)
@@ -884,7 +885,8 @@ class SyncACTrainer(object):
                         policy_strategy=self.policy_strategy,
                         policy_topk_sampling=self.policy_topk_sampling,
                         policy_sampling_temperature=self.policy_sampling_temperature,
-                        policy_topp_sampling=self.policy_topp_sampling)
+                        policy_topp_sampling=self.policy_topp_sampling,
+                        special_tok_mask=self.special_tok_mask)
                     bptt = True
 
                     # 3. Compute loss.
@@ -1034,7 +1036,7 @@ class AsyncACTrainer(object):
 
     def __init__(self, global_model, model, train_loss, valid_loss, actor_optim, critic_optim,
                  policy_strategy, policy_topk_sampling, policy_sampling_temperature, policy_topp_sampling,
-                 use_target_network, target_network_update_period,
+                 special_tok_mask, use_target_network, target_network_update_period,
                  trunc_size=0, shard_size=32,
                  norm_method="sents", accum_count=[1],
                  accum_steps=[0],
@@ -1053,6 +1055,7 @@ class AsyncACTrainer(object):
         self.policy_topk_sampling = policy_topk_sampling
         self.policy_sampling_temperature = policy_sampling_temperature
         self.policy_topp_sampling = policy_topp_sampling
+        self.special_tok_mask = special_tok_mask
         self.use_target_network = use_target_network
         self.target_network = copy.deepcopy(model.critic).cuda() if use_target_network else None
         self.target_network_update_period = target_network_update_period
@@ -1272,7 +1275,8 @@ class AsyncACTrainer(object):
                     # F-prop through the model.
                     outputs, attns = valid_model(src, tgt, src_lengths,
                                                  with_align=self.with_align,
-                                                 policy_strategy=PolicyStrategy.Greedy)
+                                                 policy_strategy=PolicyStrategy.Greedy,
+                                                 special_tok_mask=self.special_tok_mask)
 
                     # Compute loss.
                     _, batch_stats = self.valid_loss(batch, outputs, attns, target_critic=self.target_network, src=src)
@@ -1337,7 +1341,8 @@ class AsyncACTrainer(object):
                         policy_strategy=self.policy_strategy,
                         policy_topk_sampling=self.policy_topk_sampling,
                         policy_sampling_temperature=self.policy_sampling_temperature,
-                        policy_topp_sampling=self.policy_topp_sampling)
+                        policy_topp_sampling=self.policy_topp_sampling,
+                        special_tok_mask=self.special_tok_mask)
                     bptt = True
 
                     # 3. Compute loss.
@@ -1505,7 +1510,7 @@ class PPOTrainer(object):
 
     def __init__(self, model, train_loss, valid_loss, actor_optim, critic_optim,
                  policy_strategy, policy_topk_sampling, policy_sampling_temperature, policy_topp_sampling,
-                 use_target_network, target_network_update_period,
+                 special_tok_mask, use_target_network, target_network_update_period,
                  trunc_size=0, shard_size=32,
                  norm_method="sents", accum_count=[1],
                  accum_steps=[0],
@@ -1524,6 +1529,7 @@ class PPOTrainer(object):
         self.policy_topk_sampling = policy_topk_sampling
         self.policy_sampling_temperature = policy_sampling_temperature
         self.policy_topp_sampling = policy_topp_sampling
+        self.special_tok_mask = special_tok_mask
         self.use_target_network = use_target_network
         self.target_network = copy.deepcopy(model.critic).cuda() if use_target_network else None
         self.target_network_update_period = target_network_update_period
