@@ -1,0 +1,21 @@
+# opensubtitles_v2016_de_en.yaml
+save_data: OpenSubtitles-v2016
+
+## Where the vocab(s) will be written
+src_vocab: OpenSubtitles-v2016/de-en-v2016-lower.vocab.src
+tgt_vocab: OpenSubtitles-v2016/de-en-v2016-lower.vocab.tgt
+# Prevent overwriting existing files in the folder
+overwrite: False
+
+# Corpus opts:
+data:
+    opensubtitles:
+        path_src: OpenSubtitles-v2016/de-en-v2016-train-src-lower.txt
+        path_tgt: OpenSubtitles-v2016/de-en-v2016-train-tgt-lower.txt
+        transforms: []
+#        transforms: [sentencepiece]
+    valid:
+        path_src: OpenSubtitles-v2016/de-en-v2016-valid-src-lower.txt
+        path_tgt: OpenSubtitles-v2016/de-en-v2016-valid-tgt-lower.txt
+        transforms: []
+#        transforms: [sentencepiece]
