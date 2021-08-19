@@ -24,8 +24,8 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/OpenSubtitles-v2016/critic_pretraining/a3c/model
-train_from: data/OpenSubtitles-v2016/actor_pretraining/a3c/model_step_100000.pt
+save_model: data/OpenSubtitles-v2016/critic_pretraining/a3c-lower/model
+train_from: data/OpenSubtitles-v2016/actor_pretraining/a3c-lower/model_step_100000.pt
 reset_optim: "all"
 keep_checkpoint: 50
 save_checkpoint_steps: 10000
@@ -54,15 +54,19 @@ accum_steps: [0]
 model_dtype: "fp32"
 optim: "sharedadam"
 learning_rate: 2
-warmup_steps: 1
-decay_method: "noam"
+warmup_steps: 0
+decay_method: "none"
 start_decay_steps: 0
+learning_rate_decay: 0.9
+decay_steps: 1000
 adam_beta2: 0.998
 max_grad_norm: 0
 label_smoothing: 0.1
 param_init: 0
 param_init_glorot: true
 normalization: "tokens"
+actor_learning_rate: 0.0001
+critic_learning_rate: 0.001
 
 # Model
 model_task: a3c
