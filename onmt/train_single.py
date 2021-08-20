@@ -68,6 +68,7 @@ def main(opt, fields, transforms_cls, checkpoint, device_id,
 
     model_opt = _get_model_opts(opt, checkpoint=checkpoint)
 
+    print('Building model')
     # Build model.
     model = build_model(model_opt, opt, fields, checkpoint)
     model.count_parameters(log=logger.info)
