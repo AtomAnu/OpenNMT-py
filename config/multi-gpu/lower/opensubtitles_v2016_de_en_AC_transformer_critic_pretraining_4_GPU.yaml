@@ -24,23 +24,23 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/OpenSubtitles-v2016/critic_pretraining/ac-2gpu-new/model
-train_from: data/OpenSubtitles-v2016/actor_pretraining/ac-2gpu-new/model_step_100000.pt
-reset_optim: "all"
+save_model: data/OpenSubtitles-v2016/critic_pretraining/ac-4gpu-lower/model
+train_from: data/OpenSubtitles-v2016/actor_pretraining/ac-4gpu-lower/model_step_30000.pt
+#reset_optim: "all"
 keep_checkpoint: 50
-save_checkpoint_steps: 10000
+save_checkpoint_steps: 100
 average_decay: 0.0005
 seed: 1234
 report_every: 1
-train_steps: 200000
-valid_steps: 10000
+train_steps: 40000
+valid_steps: 1000
 
 # Batching
 queue_size: 1024
 bucket_size: 32768
 pool_factor: 8192
-world_size: 3
-gpu_ranks: [0,1,2]
+world_size: 4
+gpu_ranks: [0,1,2,3]
 batch_type: "tokens"
 batch_size: 4096
 valid_batch_size: 4096
@@ -51,9 +51,9 @@ accum_steps: [0]
 
 # Optimization
 model_dtype: "fp32"
-optim: "sharedadam"
+optim: "adam"
 learning_rate: 2
-warmup_steps: 1
+#warmup_steps: 1
 decay_method: "noam"
 start_decay_steps: 0
 adam_beta2: 0.998
@@ -91,3 +91,6 @@ dropout_steps: [0]
 dropout: [0.1]
 attention_dropout: [0.1]
 position_encoding: true
+
+# Logging
+log_file: logs/ac-4gpu-lower/critic_pretraining.txt

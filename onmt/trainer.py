@@ -112,10 +112,10 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global
         policy_sampling_temperature, policy_topp_sampling = None, None, None, None
 
         if opt.train_mode != TrainMode.ACTOR:
-            policy_strategy = opt.policy_strategy[gpu_rank]
-            policy_topk_sampling = opt.policy_topk_sampling[gpu_rank]
-            policy_sampling_temperature = opt.policy_sampling_temperature[gpu_rank]
-            policy_topp_sampling = opt.policy_topp_sampling[gpu_rank]
+            policy_strategy = opt.policy_strategy[0]
+            policy_topk_sampling = opt.policy_topk_sampling[0]
+            policy_sampling_temperature = opt.policy_sampling_temperature[0]
+            policy_topp_sampling = opt.policy_topp_sampling[0]
 
         trainer = onmt.SyncACTrainer(model, train_loss, valid_loss, actor_optim, critic_optim,
                                      policy_strategy, policy_topk_sampling, policy_sampling_temperature,
