@@ -24,13 +24,13 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/OpenSubtitles-v2016/actor_pretraining/ac-2gpu-lower/model
+save_model: data/OpenSubtitles-v2016/actor_pretraining/ac-4gpu-lower/model
 keep_checkpoint: 50
 save_checkpoint_steps: 10000
 average_decay: 0.0005
 seed: 1234
 report_every: 1
-train_steps: 10000
+train_steps: 30000
 valid_steps: 10000
 
 # Batching
