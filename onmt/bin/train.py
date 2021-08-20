@@ -144,6 +144,8 @@ def train(opt):
             transforms_cls=transforms_cls,
             checkpoint=checkpoint)
     else:
+        print('Performing Sync Training')
+
         train_process = partial(
             single_main,
             fields=fields,
