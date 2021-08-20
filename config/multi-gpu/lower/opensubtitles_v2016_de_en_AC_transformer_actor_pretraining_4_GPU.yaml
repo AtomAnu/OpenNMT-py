@@ -21,6 +21,11 @@ data:
 #        transforms: [sentencepiece]
 
 
+# Vocab Options
+src_vocab_size: 100000
+tgt_vocab_size: 100000
+
+
 # # Model training parameters
 
 # General opts
