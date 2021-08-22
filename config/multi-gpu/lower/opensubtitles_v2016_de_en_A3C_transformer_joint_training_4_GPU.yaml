@@ -74,7 +74,7 @@ policy_strategy: [categorical, categorical, categorical]
 policy_topk_sampling: [10,50,100]
 policy_sampling_temperature: [1.0,1.0,1.0]
 policy_topp_sampling: [-1,-1,-1]
-discount_factor: 0.5
+discount_factor: 0.99
 multi_step: 5
 w_fluency: 1
 w_tlss: 0
