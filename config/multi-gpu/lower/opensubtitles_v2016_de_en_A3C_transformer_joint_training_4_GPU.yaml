@@ -24,7 +24,7 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/OpenSubtitles-v2016/joint_training/a3c/model
+save_model: data/OpenSubtitles-v2016/joint_training/a3c-lower/model
 train_from: data/OpenSubtitles-v2016/critic_pretraining/a3c-lower/model_step_900.pt
 reset_optim: "all"
 keep_checkpoint: 50
