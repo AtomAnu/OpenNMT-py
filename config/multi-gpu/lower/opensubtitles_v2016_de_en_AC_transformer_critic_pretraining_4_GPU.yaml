@@ -56,7 +56,7 @@ model_dtype: "fp32"
 optim: "adam"
 learning_rate: 2
 #warmup_steps: 1
-decay_method: "noam"
+decay_method: "none"
 start_decay_steps: 0
 adam_beta2: 0.998
 max_grad_norm: 0
