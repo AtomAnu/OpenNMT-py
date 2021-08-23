@@ -71,7 +71,7 @@ critic_learning_rate: 0.00001
 model_task: a3c
 train_mode: ac
 policy_strategy: [categorical, categorical, categorical]
-policy_topk_sampling: [10,10,10]
+policy_topk_sampling: [100,200,500]
 policy_sampling_temperature: [1.0,1.0,1.0]
 policy_topp_sampling: [-1,-1,-1]
 discount_factor: 0.99
