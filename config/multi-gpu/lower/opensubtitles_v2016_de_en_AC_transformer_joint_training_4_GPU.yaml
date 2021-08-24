@@ -26,7 +26,7 @@ data:
 # General opts
 save_model: data/OpenSubtitles-v2016/joint_training/ac-4gpu-lower/model
 train_from: data/OpenSubtitles-v2016/critic_pretraining/ac-4gpu-lower/model_step_32100.pt
-#reset_optim: "all"
+reset_optim: "all"
 keep_checkpoint: 50
 save_checkpoint_steps: 100
 average_decay: 0.0005
