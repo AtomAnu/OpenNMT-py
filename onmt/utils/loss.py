@@ -492,8 +492,8 @@ class ACLossCompute(LossComputeBase):
 
             Q_mod, Q_all = self.model.critic(target, output, self.eos_idx)
 
-            log_policy_dist = std_attn
-            scores = self._bottle(log_policy_dist)
+            scores = self._bottle(std_attn)
+            policy_dist = std_attn.exp()
             gtruth = target.view(-1)
 
             # reward_tensor = self._compute_reward(output[1:], target[1:], bleu_add_1)
@@ -503,9 +503,9 @@ class ACLossCompute(LossComputeBase):
             if target_critic is not None:
                 with torch.no_grad():
                     target_Q_mod, target_Q_all = target_critic(target, output, self.eos_idx)
-                critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + self.discount_factor * (log_policy_dist[1:].detach() * target_Q_all[1:]).sum(2).unsqueeze(2)))**2)
+                critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + self.discount_factor * (policy_dist[1:].detach() * target_Q_all[1:]).sum(2).unsqueeze(2)))**2)
             else:
-                critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + self.discount_factor * (log_policy_dist[1:].detach() * Q_all[1:]).sum(2).unsqueeze(2))) ** 2)
+                critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + self.discount_factor * (policy_dist[1:].detach() * Q_all[1:]).sum(2).unsqueeze(2))) ** 2)
 
             var_reduction_term = (Q_all[:-1] - (1/len(self.tgt_vocab)) * Q_all[:-1].sum(2).unsqueeze(2)).sum(2).unsqueeze(2)
 
@@ -522,7 +522,7 @@ class ACLossCompute(LossComputeBase):
 
                 xent_loss = self.criterion(scores, gtruth)
 
-                policy_loss = -(log_policy_dist[:-1] * Q_all[:-1].detach()).sum()
+                policy_loss = -(policy_dist[:-1] * Q_all[:-1].detach()).sum()
 
                 actor_loss = policy_loss + self.lambda_xent * xent_loss
 
