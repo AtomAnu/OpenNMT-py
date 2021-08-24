@@ -24,25 +24,25 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/OpenSubtitles-v2016/joint_training/a2c-2gpu-new/model
-train_from: data/OpenSubtitles-v2016/critic_pretraining/a2c-2gpu-new/model_step_200000.pt
+save_model: data/OpenSubtitles-v2016/joint_training/a2c-1gpu/model
+train_from: data/OpenSubtitles-v2016/actor_pretraining/a3c-lower/model_step_100000.pt
 keep_checkpoint: 50
-save_checkpoint_steps: 10000
+save_checkpoint_steps: 100
 average_decay: 0.0005
 seed: 1234
 report_every: 1
 train_steps: 300000
-valid_steps: 10000
+valid_steps: 1000
 
 # Batching
 queue_size: 1024
 bucket_size: 32768
 pool_factor: 8192
-world_size: 3
-gpu_ranks: [0,1,2]
+world_size: 1
+gpu_ranks: [0]
 batch_type: "tokens"
-batch_size: 4096
-valid_batch_size: 4096
+batch_size: 2000
+valid_batch_size: 2000
 batch_size_multiple: 1
 max_generator_batches: 0
 accum_count: [3]
@@ -50,9 +50,9 @@ accum_steps: [0]
 
 # Optimization
 model_dtype: "fp32"
-optim: "sharedadam"
+optim: "adam"
 learning_rate: 2
-warmup_steps: 1
+#warmup_steps: 1
 decay_method: "noam"
 start_decay_steps: 0
 adam_beta2: 0.998
@@ -66,9 +66,9 @@ normalization: "tokens"
 model_task: a2c
 train_mode: ac
 policy_strategy: [categorical, categorical, categorical]
-policy_topk_sampling: [-1,-1,-1]
+policy_topk_sampling: [100,-1,-1]
 policy_sampling_temperature: [1.0,0.9,0.7]
-policy_topp_sampling: [1.0,0.7,0.5]
+policy_topp_sampling: [-1,-1,-1]
 discount_factor: 0.5
 multi_step: 5
 w_fluency: 1
@@ -90,3 +90,6 @@ dropout_steps: [0]
 dropout: [0.1]
 attention_dropout: [0.1]
 position_encoding: true
+
+# Logging
+log_file: logs/a2c-1gpu/joint_training.txt
