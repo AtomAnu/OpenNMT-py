@@ -492,9 +492,8 @@ class ACLossCompute(LossComputeBase):
 
             Q_mod, Q_all = self.model.critic(target, output, self.eos_idx)
 
-            policy_dist = std_attn
-            scores = std_attn.log() # log(policy distribution)
-            scores = self._bottle(scores)
+            log_policy_dist = std_attn
+            scores = self._bottle(log_policy_dist)
             gtruth = target.view(-1)
 
             # reward_tensor = self._compute_reward(output[1:], target[1:], bleu_add_1)
