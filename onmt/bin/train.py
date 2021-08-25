@@ -196,7 +196,7 @@ def train(opt):
             p.terminate()
 
     elif nb_gpu == 1:  # case 1 GPU only
-        train_process(opt, device_id=0)
+        train_process(opt, device_id=opt.device_id)
     else:   # case only CPU
         train_process(opt, device_id=-1)
 

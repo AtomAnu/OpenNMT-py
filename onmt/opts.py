@@ -576,6 +576,8 @@ def _add_train_general_opts(parser):
               help="list of ranks of each process.")
     group.add('--world_size', '-world_size', default=1, type=int,
               help="total number of distributed processes.")
+    group.add('--device_id', '-device_id', default=0, type=int,
+              help='In case of 1 GPU, specify the device ID')
     group.add('--gpu_backend', '-gpu_backend',
               default="nccl", type=str,
               help="Type of torch distributed backend")
