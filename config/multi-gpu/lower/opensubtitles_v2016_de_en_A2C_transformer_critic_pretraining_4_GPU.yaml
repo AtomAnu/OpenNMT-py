@@ -24,23 +24,24 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/OpenSubtitles-v2016/critic_pretraining/a2c-2gpu-new/model
-train_from: data/OpenSubtitles-v2016/actor_pretraining/a2c-2gpu-new/model_step_100000.pt
+save_model: data/OpenSubtitles-v2016/critic_pretraining/a2c-1gpu/model
+train_from: data/OpenSubtitles-v2016/actor_pretraining/a2c-1gpu/model_step_30000.pt
 reset_optim: "all"
 keep_checkpoint: 50
-save_checkpoint_steps: 5000
+save_checkpoint_steps: 100
 average_decay: 0.0005
 seed: 1234
 report_every: 1
-train_steps: 200000
-valid_steps: 10000
+train_steps: 2000
+valid_steps: 1000
 
 # Batching
 queue_size: 1024
 bucket_size: 32768
 pool_factor: 8192
-world_size: 3
-gpu_ranks: [0,1,2]
+world_size: 1
+gpu_ranks: [0]
+device_id: 1
 batch_type: "tokens"
 batch_size: 4096
 valid_batch_size: 4096
@@ -51,17 +52,19 @@ accum_steps: [0]
 
 # Optimization
 model_dtype: "fp32"
-optim: "sharedadam"
-learning_rate: 2
-warmup_steps: 1
-decay_method: "noam"
+warmup_steps: 0
+decay_method: "none"
 start_decay_steps: 0
+learning_rate_decay: 0.9
+decay_steps: 1000
 adam_beta2: 0.998
 max_grad_norm: 0
 label_smoothing: 0.1
 param_init: 0
 param_init_glorot: true
 normalization: "tokens"
+actor_learning_rate: 0.0001
+critic_learning_rate: 0.001
 
 # Model
 model_task: a2c
@@ -91,3 +94,6 @@ dropout_steps: [0]
 dropout: [0.1]
 attention_dropout: [0.1]
 position_encoding: true
+
+# Logging
+log_file: logs/a2c-1gpu/critic_pretraining.txt
