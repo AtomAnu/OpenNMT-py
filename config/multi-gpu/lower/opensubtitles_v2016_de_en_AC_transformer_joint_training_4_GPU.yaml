@@ -33,7 +33,7 @@ average_decay: 0.0005
 seed: 1234
 report_every: 1
 train_steps: 300000
-valid_steps: 100
+valid_steps: 1000
 
 # Batching
 queue_size: 1024
