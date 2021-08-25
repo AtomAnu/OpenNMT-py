@@ -120,6 +120,12 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global
             policy_sampling_temperature = opt.policy_sampling_temperature[0]
             policy_topp_sampling = opt.policy_topp_sampling[0]
 
+        if opt.device_id != 0 or gpu_rank <= 0:
+            model_saver = model_saver
+        else:
+            model_saver = None
+
+
         trainer = onmt.SyncACTrainer(model, train_loss, valid_loss, actor_optim, critic_optim,
                                      policy_strategy, policy_topk_sampling, policy_sampling_temperature,
                                      policy_topp_sampling, special_tok_mask,
@@ -129,7 +135,7 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global
                                      n_gpu, gpu_rank,
                                      gpu_verbose_level, report_manager,
                                      with_align=True if opt.lambda_align > 0 else False,
-                                     model_saver=model_saver if gpu_rank <= 0 else None,
+                                     model_saver=model_saver,
                                      average_decay=average_decay,
                                      average_every=average_every,
                                      model_dtype=opt.model_dtype,
