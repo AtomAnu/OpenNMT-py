@@ -25,14 +25,14 @@ data:
 
 # General opts
 save_model: data/OpenSubtitles-v2016/joint_training/a2c-1gpu/model
-train_from: data/OpenSubtitles-v2016/actor_pretraining/a3c-lower/model_step_100000.pt
-reset_optim: "all"
+train_from: data/OpenSubtitles-v2016/critic_pretraining/a2c-1gpu/model_step_200.pt
+#reset_optim: "all"
 keep_checkpoint: 50
 save_checkpoint_steps: 100
 average_decay: 0.0005
 seed: 1234
 report_every: 1
-train_steps: 300000
+train_steps: 10000
 valid_steps: 1000
 
 # Batching
@@ -41,6 +41,7 @@ bucket_size: 32768
 pool_factor: 8192
 world_size: 1
 gpu_ranks: [0]
+device_id: 2
 batch_type: "tokens"
 batch_size: 2000
 valid_batch_size: 2000
