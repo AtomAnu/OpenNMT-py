@@ -69,7 +69,7 @@ critic_learning_rate: 0.00001
 # Model
 model_task: ac
 train_mode: ac
-async: false
+#async: false
 policy_strategy: [categorical, categorical, categorical]
 policy_topk_sampling: [-1,-1,-1]
 policy_sampling_temperature: [1.0,0.95,0.9]
