@@ -129,8 +129,8 @@ def train(opt):
             critic_optim = Optimizer.from_opt(global_model.critic, opt, checkpoint=checkpoint, ac_optim_opt='critic')
             optim = (actor_optim, critic_optim)
         else:
-            actor_optim = Optimizer.from_opt(global_model.actor, opt, checkpoint=checkpoint)
-            critic_optim = Optimizer.from_opt(global_model.critic, opt, checkpoint=checkpoint)
+            actor_optim = Optimizer.from_opt(global_model.actor, opt, checkpoint=checkpoint, ac_optim_opt='actor')
+            critic_optim = Optimizer.from_opt(global_model.critic, opt, checkpoint=checkpoint, ac_optim_opt='critic')
             optim = (actor_optim, critic_optim)
 
         # unsuper_reward = UnsuperReward(fields, opt.w_fluency, opt.w_tlss, opt.w_slss, global_gpu_id, opt.norm_unsuper_reward)
@@ -142,7 +142,7 @@ def train(opt):
             optim=optim,
             # global_gpu_id=global_gpu_id,
             # unsuper_reward=unsuper_reward,
-            model_opt=model_opt,
+            model_opt=opt,
             fields=fields,
             transforms_cls=transforms_cls,
             checkpoint=checkpoint)
