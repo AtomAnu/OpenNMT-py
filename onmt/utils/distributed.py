@@ -199,6 +199,10 @@ def batch_producer(generator_to_serve, queue, semaphore, opt, device_id):
 def consumer(process_fn, opt, device_id, error_queue, batch_queue, semaphore):  # noqa: E501
     """Run `process_fn` on `device_id` with data from `batch_queue`."""
     try:
+
+        print('GPU Ranks: {}'.format(opt.gpu_ranks))
+        print('device_id: {}'.format(device_id))
+
         gpu_rank = multi_init(opt, device_id)
         if gpu_rank != opt.gpu_ranks[device_id]:
             raise AssertionError("An error occurred in \
