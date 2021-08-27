@@ -9,7 +9,7 @@ from math import sqrt
 import types
 import importlib
 from onmt.utils.misc import fn_args
-from onmt.constants import TrainMode
+from onmt.constants import ModelTask, TrainMode
 
 
 def build_torch_optimizer(model, opt, ac_optim_opt=None):
@@ -299,6 +299,11 @@ class Optimizer(object):
             elif opt.reset_optim == 'keep_states':
                 # Reset options, keep optimizer.
                 optim_state_dict = ckpt_state_dict
+
+        # Debugging
+        if opt.model_task == ModelTask.AC and opt.async:
+            optim_opt = opt
+            optim_state_dict = None
 
         if ac_optim_opt is None or opt.train_mode == TrainMode.ACTOR:
             lr = opt.learning_rate
