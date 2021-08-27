@@ -111,11 +111,14 @@ def train(opt):
 
     if opt.async or opt.model_task == ModelTask.A3C and opt.train_mode in [TrainMode.CRITIC, TrainMode.AC]:
 
+        print('Performing Async Training')
+
         model_opt = _get_model_opts(opt, checkpoint=checkpoint)
 
         # if len(opt.gpu_ranks) > 2:
         global_gpu_id = opt.gpu_ranks[-1] + 1
 
+        print('Building the global model')
         # Build a global model.
         global_model = build_model(model_opt, opt, fields, checkpoint, gpu_id=global_gpu_id)
         global_model.share_memory()
@@ -158,12 +161,18 @@ def train(opt):
 
         queues = []
         mp = torch.multiprocessing.get_context('spawn')
+
+        print('Creating semaphore')
+
         semaphore = mp.Semaphore(opt.world_size * opt.queue_size)
         # Create a thread to listen for errors in the child processes.
         error_queue = mp.SimpleQueue()
         error_handler = ErrorHandler(error_queue)
         # Train with multiprocessing.
         procs = []
+
+        print('Creating consumers')
+
         for device_id in range(nb_gpu):
             q = mp.Queue(opt.queue_size)
             queues += [q]
@@ -174,6 +183,8 @@ def train(opt):
             logger.info(" Starting process pid: %d  " % procs[device_id].pid)
             error_handler.add_child(procs[device_id].pid)
         producers = []
+
+        print('Creating producers')
         # This does not work if we merge with the first loop, not sure why
         for device_id in range(nb_gpu):
             # Get the iterator to generate from

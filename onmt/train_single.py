@@ -146,6 +146,7 @@ def async_main(global_model, optim, model_opt, opt, fields, transforms_cls, chec
     configure_process(opt, device_id)
     init_logger(opt.log_file)
 
+    print('Building the local model | device_id: {}'.format(device_id))
     # Build a local A2C model.
     model = build_model(model_opt, opt, fields, checkpoint)
     model.count_parameters(log=logger.info)
