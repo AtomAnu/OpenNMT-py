@@ -195,6 +195,8 @@ def train(opt):
                 train_process, opt, device_id, error_queue, q, semaphore),
                 daemon=True))
 
+            print('procs: {}'.format(procs))
+
             print('Starting consumer')
 
             procs[device_id].start()
