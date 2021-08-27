@@ -188,8 +188,14 @@ def train(opt):
         # This does not work if we merge with the first loop, not sure why
         for device_id in range(nb_gpu):
             # Get the iterator to generate from
+
+            print('Building train iter')
+
             train_iter = _build_train_iter(
                 opt, fields, transforms_cls, stride=nb_gpu, offset=device_id)
+
+            print('Deploying producer')
+
             producer = mp.Process(target=batch_producer,
                                   args=(train_iter, queues[device_id],
                                         semaphore, opt, device_id),
