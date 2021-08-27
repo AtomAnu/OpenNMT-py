@@ -51,7 +51,7 @@ accum_steps: [0]
 
 # Optimization
 model_dtype: "fp32"
-optim: "adam"
+optim: "sharedadam"
 learning_rate: 2
 warmup_steps: 0
 decay_method: "none"
