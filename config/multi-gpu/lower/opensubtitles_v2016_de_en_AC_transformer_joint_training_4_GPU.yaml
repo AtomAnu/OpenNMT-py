@@ -36,6 +36,7 @@ train_steps: 10000
 valid_steps: 1000
 
 # Batching
+master_port: 12345
 queue_size: 1024
 bucket_size: 32768
 pool_factor: 8192
