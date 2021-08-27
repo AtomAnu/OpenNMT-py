@@ -300,10 +300,10 @@ class Optimizer(object):
                 # Reset options, keep optimizer.
                 optim_state_dict = ckpt_state_dict
 
-        # Debugging
-        if opt.model_task == ModelTask.AC and opt.async:
-            optim_opt = opt
-            optim_state_dict = None
+        # # Debugging
+        # if opt.model_task == ModelTask.AC and opt.async:
+        #     optim_opt = opt
+        #     optim_state_dict = None
 
         if ac_optim_opt is None or opt.train_mode == TrainMode.ACTOR:
             lr = opt.learning_rate

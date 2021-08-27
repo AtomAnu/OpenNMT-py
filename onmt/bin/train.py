@@ -120,7 +120,8 @@ def train(opt):
 
         print('Building the global model')
         # Build a global model.
-        global_model = build_model(model_opt, opt, fields, checkpoint, gpu_id=global_gpu_id)
+        global_model = build_model(opt, opt, fields, checkpoint, gpu_id=global_gpu_id)
+        # global_model = build_model(model_opt, opt, fields, checkpoint, gpu_id=global_gpu_id)
         global_model.share_memory()
 
         # Build optimizer.
@@ -133,10 +134,10 @@ def train(opt):
             critic_optim = Optimizer.from_opt(global_model.critic, opt, checkpoint=checkpoint, ac_optim_opt='critic')
             optim = (actor_optim, critic_optim)
 
-        if opt.model_task == ModelTask.AC:
-            actor_optim = Optimizer.from_opt(global_model.actor, opt, checkpoint=None, ac_optim_opt='actor')
-            critic_optim = Optimizer.from_opt(global_model.critic, opt, checkpoint=None, ac_optim_opt='critic')
-            optim = (actor_optim, critic_optim)
+        # if opt.model_task == ModelTask.AC:
+        #     actor_optim = Optimizer.from_opt(global_model.actor, opt, checkpoint=None, ac_optim_opt='actor')
+        #     critic_optim = Optimizer.from_opt(global_model.critic, opt, checkpoint=None, ac_optim_opt='critic')
+        #     optim = (actor_optim, critic_optim)
 
         # unsuper_reward = UnsuperReward(fields, opt.w_fluency, opt.w_tlss, opt.w_slss, global_gpu_id, opt.norm_unsuper_reward)
         # unsuper_reward = None
