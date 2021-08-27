@@ -173,6 +173,8 @@ def train(opt):
 
         print('Creating semaphore')
 
+        print('World size: {}'.format(opt.world_size))
+
         semaphore = mp.Semaphore(opt.world_size * opt.queue_size)
         # Create a thread to listen for errors in the child processes.
         error_queue = mp.SimpleQueue()
