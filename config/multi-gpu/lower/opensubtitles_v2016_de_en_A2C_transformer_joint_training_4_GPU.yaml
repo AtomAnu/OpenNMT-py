@@ -39,8 +39,8 @@ valid_steps: 1000
 queue_size: 1024
 bucket_size: 32768
 pool_factor: 8192
-world_size: 1
-gpu_ranks: [0]
+world_size: 3
+gpu_ranks: [0,1,2]
 device_id: 2
 batch_type: "tokens"
 batch_size: 2000
@@ -70,6 +70,7 @@ critic_learning_rate: 0.00001
 # Model
 model_task: a2c
 train_mode: ac
+async: true
 policy_strategy: [categorical, categorical, categorical]
 policy_topk_sampling: [100,-1,-1]
 policy_sampling_temperature: [1.0,0.9,0.7]
@@ -97,4 +98,4 @@ attention_dropout: [0.1]
 position_encoding: true
 
 # Logging
-log_file: logs/a2c-1gpu/joint_training.txt
+log_file: logs/a2c-1gpu/async_joint_training.txt
