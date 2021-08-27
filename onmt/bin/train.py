@@ -157,6 +157,9 @@ def train(opt):
 
     nb_gpu = len(opt.gpu_ranks)
 
+    print('Number of gpus: {}'.format(nb_gpu))
+    print('GPU RANKS: {}'.format(opt.gpu_ranks))
+
     if opt.world_size > 1:
 
         queues = []
