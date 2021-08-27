@@ -174,11 +174,20 @@ def train(opt):
         print('Creating consumers')
 
         for device_id in range(nb_gpu):
+
+            print('Constructing mp queue')
+
             q = mp.Queue(opt.queue_size)
             queues += [q]
+
+            print('Deploying consumer')
+
             procs.append(mp.Process(target=consumer, args=(
                 train_process, opt, device_id, error_queue, q, semaphore),
                 daemon=True))
+
+            print('Starting consumer')
+
             procs[device_id].start()
             logger.info(" Starting process pid: %d  " % procs[device_id].pid)
             error_handler.add_child(procs[device_id].pid)
