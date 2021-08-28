@@ -24,7 +24,7 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/OpenSubtitles-v2016/joint_training/ac-async-4gpu-topk/model
+save_model: data/OpenSubtitles-v2016/joint_training/ac-async-4gpu-topk-new/model
 train_from: data/OpenSubtitles-v2016/critic_pretraining/ac-4gpu-lower/model_step_30300.pt
 reset_optim: "all"
 keep_checkpoint: 50
@@ -43,11 +43,11 @@ pool_factor: 8192
 world_size: 3
 gpu_ranks: [0,1,2]
 batch_type: "tokens"
-batch_size: 1500
-valid_batch_size: 1500
+batch_size: 2000
+valid_batch_size: 2000
 batch_size_multiple: 1
 max_generator_batches: 0
-accum_count: [3]
+accum_count: [1]
 accum_steps: [0]
 
 # Optimization
