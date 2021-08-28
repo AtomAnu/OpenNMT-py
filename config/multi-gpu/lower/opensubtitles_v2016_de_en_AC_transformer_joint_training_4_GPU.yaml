@@ -24,7 +24,7 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/OpenSubtitles-v2016/joint_training/ac-async-4gpu-lower/model
+save_model: data/OpenSubtitles-v2016/joint_training/ac-async-4gpu-topk/model
 train_from: data/OpenSubtitles-v2016/critic_pretraining/ac-4gpu-lower/model_step_30300.pt
 reset_optim: "all"
 keep_checkpoint: 50
@@ -72,9 +72,9 @@ model_task: ac
 train_mode: ac
 async: true
 policy_strategy: [categorical, categorical, categorical]
-policy_topk_sampling: [-1,-1,-1]
-policy_sampling_temperature: [1.0,0.95,0.9]
-policy_topp_sampling: [1,0.9,0.8]
+policy_topk_sampling: [100,200,500]
+policy_sampling_temperature: [1.0,1.0,1.0]
+policy_topp_sampling: [-1,-1,-1]
 discount_factor: 0.99
 multi_step: 5
 w_fluency: 1
@@ -98,4 +98,4 @@ attention_dropout: [0.1]
 position_encoding: true
 
 # Logging
-log_file: logs/ac-4gpu-lower/async_joint_training.txt
+log_file: logs/ac-4gpu-lower/async_topk_joint_training.txt
