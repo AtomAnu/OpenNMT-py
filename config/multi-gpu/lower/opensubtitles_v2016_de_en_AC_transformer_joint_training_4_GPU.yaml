@@ -24,7 +24,7 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/OpenSubtitles-v2016/joint_training/ac-async-4gpu-topk-new/model
+save_model: data/OpenSubtitles-v2016/joint_training/ac-async-4gpu-lower-lr/model
 train_from: data/OpenSubtitles-v2016/critic_pretraining/ac-4gpu-lower/model_step_30300.pt
 reset_optim: "all"
 keep_checkpoint: 50
@@ -64,8 +64,8 @@ label_smoothing: 0.1
 param_init: 0
 param_init_glorot: true
 normalization: "tokens"
-actor_learning_rate: 0.00001
-critic_learning_rate: 0.00001
+actor_learning_rate: 0.000005
+critic_learning_rate: 0.000005
 
 # Model
 model_task: ac
