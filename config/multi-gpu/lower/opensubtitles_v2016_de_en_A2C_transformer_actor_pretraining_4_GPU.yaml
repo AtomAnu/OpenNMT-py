@@ -20,11 +20,14 @@ data:
         transforms: []
 #        transforms: [sentencepiece]
 
+# Vocab Options
+src_vocab_size: 100000
+tgt_vocab_size: 100000
 
 # # Model training parameters
 
 # General opts
-save_model: data/OpenSubtitles-v2016/actor_pretraining/a2c-1gpu/model
+save_model: data/OpenSubtitles-v2016/actor_pretraining/a2c-4gpu/model
 keep_checkpoint: 50
 save_checkpoint_steps: 10000
 average_decay: 0.0005
@@ -38,9 +41,9 @@ valid_steps: 5000
 queue_size: 1024
 bucket_size: 32768
 pool_factor: 8192
-world_size: 1
-gpu_ranks: [0]
-device_id: 1
+world_size: 4
+gpu_ranks: [0,1,2,3]
+#device_id: 1
 batch_type: "tokens"
 batch_size: 4096
 valid_batch_size: 4096
