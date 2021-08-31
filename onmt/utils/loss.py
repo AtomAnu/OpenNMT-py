@@ -1017,7 +1017,7 @@ class PPOLossCompute(LossComputeBase):
                 advantages = (multi_step_return + (self.discount_factor ** self.multi_step) * future_V - V[:-1].detach())
 
                 surr1 = ratios * advantages
-                surr2 = torch.clamp(ratios, 1-self.ppo_eps_clip, 1+self.ppo_eps_clip)
+                surr2 = torch.clamp(ratios, 1-self.ppo_eps_clip, 1+self.ppo_eps_clip) * advantages
 
                 policy_loss = -torch.min(surr1, surr2).sum()
 
