@@ -196,7 +196,7 @@ def build_task_specific_model(model_opt, fields):
 
         return onmt.models.ACNMTModel(actor=actor, critic=critic,
                                       train_mode=model_opt.train_mode, tgt_field=fields["tgt"])
-    elif model_opt.model_task == ModelTask.A2C or model_opt.model_task == ModelTask.A3C:
+    elif model_opt.model_task in [ModelTask.A2C, ModelTask.A3C, ModelTask.PPO]:
         logger.info('Building the A2C NMT model...')
         actor_encoder, src_emb = build_encoder_with_embeddings(model_opt, fields)
         actor_decoder, _ = build_decoder_with_embeddings(

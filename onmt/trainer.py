@@ -107,7 +107,35 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global
                                       earlystopper=earlystopper,
                                       dropout=dropout,
                                       dropout_steps=dropout_steps)
+    elif opt.model_task == ModelTask.PPO:
 
+        actor_optim, critic_optim = optim
+        policy_strategy = opt.policy_strategy[gpu_rank]
+        policy_topk_sampling = opt.policy_topk_sampling[gpu_rank]
+        policy_sampling_temperature = opt.policy_sampling_temperature[gpu_rank]
+        policy_topp_sampling = opt.policy_topp_sampling[gpu_rank]
+
+        if opt.device_id != 0 or gpu_rank <= 0:
+            model_saver = model_saver
+        else:
+            model_saver = None
+
+        trainer = onmt.PPOTrainer(model, train_loss, valid_loss, actor_optim, critic_optim, opt.ppo_k_epochs,
+                                     policy_strategy, policy_topk_sampling, policy_sampling_temperature,
+                                     policy_topp_sampling, special_tok_mask,
+                                     opt.use_target_network, opt.target_network_update_period,
+                                     trunc_size, shard_size, norm_method,
+                                     accum_count, accum_steps,
+                                     n_gpu, gpu_rank,
+                                     gpu_verbose_level, report_manager,
+                                     with_align=True if opt.lambda_align > 0 else False,
+                                     model_saver=model_saver,
+                                     average_decay=average_decay,
+                                     average_every=average_every,
+                                     model_dtype=opt.model_dtype,
+                                     earlystopper=earlystopper,
+                                     dropout=dropout,
+                                     dropout_steps=dropout_steps)
     else:
         actor_optim, critic_optim = optim
 
@@ -1517,7 +1545,7 @@ class PPOTrainer(object):
                 Thus nothing will be saved if this parameter is None
     """
 
-    def __init__(self, model, train_loss, valid_loss, actor_optim, critic_optim,
+    def __init__(self, model, train_loss, valid_loss, actor_optim, critic_optim, ppo_k_epochs,
                  policy_strategy, policy_topk_sampling, policy_sampling_temperature, policy_topp_sampling,
                  special_tok_mask, use_target_network, target_network_update_period,
                  trunc_size=0, shard_size=32,
@@ -1534,6 +1562,7 @@ class PPOTrainer(object):
         self.valid_loss = valid_loss
         self.actor_optim = actor_optim
         self.critic_optim = critic_optim
+        self.ppo_k_epochs = ppo_k_epochs
         self.policy_strategy = policy_strategy
         self.policy_topk_sampling = policy_topk_sampling
         self.policy_sampling_temperature = policy_sampling_temperature
@@ -1813,7 +1842,7 @@ class PPOTrainer(object):
                     attns -> log policy distribution 
                     """
 
-                    gen_seq, old_log_pol_dist = self.model(
+                    gen_seq, old_log_pol_dist = self.old_policy(
                         src, tgt, src_lengths, bptt=bptt,
                         with_align=self.with_align,
                         policy_strategy=self.policy_strategy,
@@ -1821,74 +1850,60 @@ class PPOTrainer(object):
                         policy_sampling_temperature=self.policy_sampling_temperature,
                         policy_topp_sampling=self.policy_topp_sampling)
 
+                    for _ in range(self.ppo_k_epochs):
 
+                        new_log_pol_dist = self.model(
+                            src, tgt, src_lengths, bptt=bptt,
+                            with_align=self.with_align,
+                            policy_strategy=self.policy_strategy,
+                            policy_topk_sampling=self.policy_topk_sampling,
+                            policy_sampling_temperature=self.policy_sampling_temperature,
+                            policy_topp_sampling=self.policy_topp_sampling,
+                            gen_seq=gen_seq)
 
+                        # 3. Compute loss.
+                        loss, batch_stats = self.train_loss(
+                            batch,
+                            gen_seq,
+                            (old_log_pol_dist, new_log_pol_dist),
+                            target_critic=self.target_network,
+                            normalization=normalization,
+                            shard_size=self.shard_size,
+                            trunc_start=j,
+                            trunc_size=trunc_size,
+                            src=src)
 
-                    bptt = True
+                        actor_loss, critic_loss = loss
 
-                    # 3. Compute loss.
-                    loss, batch_stats = self.train_loss(
-                        batch,
-                        gen_seq,
-                        old_log_pol_dist,
-                        target_critic=self.target_network,
-                        normalization=normalization,
-                        shard_size=self.shard_size,
-                        trunc_start=j,
-                        trunc_size=trunc_size,
-                        src=src)
+                        try:
+                            self.actor_optim.zero_grad()
+                            self.critic_optim.zero_grad()
 
-                    actor_loss, critic_loss = loss
+                            if actor_loss is not None:
+                                self.actor_optim.backward(actor_loss)
 
-                try:
-                    if actor_loss is not None:
-                        self.actor_optim.backward(actor_loss)
+                            if critic_loss is not None:
+                                self.critic_optim.backward(critic_loss)
 
-                    if critic_loss is not None:
-                        self.critic_optim.backward(critic_loss)
+                            #     gnorm_actor = nn.utils.clip_grad_norm_(self.model.actor.parameters(), 5.0)
+                            self.actor_optim.step()
+                            #     gnorm_critic = nn.utils.clip_grad_norm_(self.model.critic.parameters(), 5.0)
+                            self.critic_optim.step()
 
-                    total_stats.update(batch_stats)
-                    report_stats.update(batch_stats)
+                            total_stats.update(batch_stats)
+                            report_stats.update(batch_stats)
 
-                except Exception:
-                    traceback.print_exc()
-                    logger.info("At step %d, we removed a batch - accum %d",
-                                self.actor_optim.training_step, k)
+                        except Exception:
+                            traceback.print_exc()
+                            logger.info("At step %d, we removed a batch - accum %d",
+                                        self.actor_optim.training_step, k)
 
-                # # 4. Update the parameters and statistics.
-                # if self.accum_count == 1:
-                #     # Multi GPU gradient gather
-                #     if self.n_gpu > 1:
-                #         grads = [p.grad.data for p in self.model.parameters()
-                #                  if p.requires_grad
-                #                  and p.grad is not None]
-                #         onmt.utils.distributed.all_reduce_and_rescale_tensors(
-                #             grads, float(1))
-                #     gnorm_actor = nn.utils.clip_grad_norm_(self.model.actor.parameters(), 5.0)
-                #     self.actor_optim.step()
-                #     gnorm_critic = nn.utils.clip_grad_norm_(self.model.critic.parameters(), 5.0)
-                #     self.critic_optim.step()
+                self.old_policy = copy.deepcopy(self.model.actor).cuda()
 
-                # If truncated, don't backprop fully.
-                # TO CHECK
-                # if dec_state is not None:
-                #    dec_state.detach()
+                bptt = True
+
                 if self.model.decoder.state is not None:
                     self.model.decoder.detach_state()
-
-        # # in case of multi step gradient accumulation,
-        # # update only after accum batches
-        # if self.accum_count > 1:
-        #     if self.n_gpu > 1:
-        #         grads = [p.grad.data for p in self.model.parameters()
-        #                  if p.requires_grad
-        #                  and p.grad is not None]
-        #         onmt.utils.distributed.all_reduce_and_rescale_tensors(
-        #             grads, float(1))
-        #     gnorm_actor = nn.utils.clip_grad_norm_(self.model.actor.parameters(), 5.0)
-        #     self.actor_optim.step()
-        #     gnorm_critic = nn.utils.clip_grad_norm_(self.model.critic.parameters(), 5.0)
-        #     self.critic_optim.step()
 
     def _start_report_manager(self, start_time=None):
         """

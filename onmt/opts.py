@@ -251,7 +251,7 @@ def model_opts(parser):
         "-model_task",
         "--model_task",
         default=ModelTask.SEQ2SEQ,
-        choices=[ModelTask.SEQ2SEQ, ModelTask.LANGUAGE_MODEL, ModelTask.AC, ModelTask.A2C, ModelTask.A3C],
+        choices=[ModelTask.SEQ2SEQ, ModelTask.LANGUAGE_MODEL, ModelTask.AC, ModelTask.A2C, ModelTask.A3C, ModelTask.PPO],
         help="Type of task for the model (seq2seq, lm, ac, a2c or a3c)",
     )
 
@@ -383,11 +383,18 @@ def model_opts(parser):
         default=0.0001,
         help="Critic optimizer learning rate")
     group.add(
-        "-ppo-k-epochs",
-        "--ppo-k-epochs",
+        "-ppo_k_epochs",
+        "--ppo_k_epochs",
         type=int,
         default=80,
         help="[For PPO] Update policy for k epochs in one PPO update")
+    group.add(
+        "-ppo_eps_clip",
+        "--ppo_eps_clip",
+        type=float,
+        default=0.2,
+        help="[For PPO] Clip parameter for PPO [1-eps, 1+eps]"
+    )
 
 
     # Encoder-Decoder Options

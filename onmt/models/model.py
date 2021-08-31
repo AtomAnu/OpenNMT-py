@@ -134,6 +134,8 @@ class Actor(nn.Module):
             if gen_seq is None:
                 return dec_out, attns
             else:
+                # TODO add entropy for PPO
+
                 return self.generator(dec_out)
 
         elif train_mode == TrainMode.CRITIC:

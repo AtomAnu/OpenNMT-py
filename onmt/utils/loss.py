@@ -114,6 +114,20 @@ def build_loss_compute(model, tgt_field, opt, train=True, unsuper_reward=None):
                 unk_idx,
                 unsuper_reward=unsuper_reward
             )
+        elif opt.model_task == ModelTask.PPO:
+            compute = PPOLossCompute(
+                criterion,
+                loss_gen,
+                model,
+                opt.discount_factor,
+                opt.multi_step,
+                opt.lambda_xent,
+                tgt_field.vocab,
+                eos_idx,
+                unk_idx,
+                unsuper_reward=unsuper_reward,
+                ppo_eps_clip=opt.ppo_eps_clip
+            )
         else:
             raise ValueError(
                 f"No compute loss defined for task {opt.model_task}"
@@ -906,6 +920,272 @@ class A2CLossCompute(LossComputeBase):
                 "output": output[range_start:range_end, :],
                 "target": batch.tgt[range_start:range_end, :, 0],
                 "std_attn": attns[range_start:range_end, :, :],
+            }
+
+        if src is not None:
+            shard_state["src"] = src
+
+        if self.lambda_coverage != 0.0:
+            self._add_coverage_shard_state(shard_state, attns)
+        if self.lambda_align != 0.0:
+            self._add_align_shard_state(
+                shard_state, batch, range_start, range_end, attns
+            )
+        return shard_state
+
+class PPOLossCompute(LossComputeBase):
+    """
+    Loss Computation parent for NMTLossCompute and LMLossCompute
+
+    Implement loss compatible with coverage and alignement shards
+    """
+    def __init__(self, criterion, generator, model, discount_factor, multi_step, lambda_xent,
+                 tgt_vocab, eos_idx, unk_idx, unsuper_reward=None, ppo_eps_clip=0,
+                 normalization="sents", lambda_coverage=0.0, lambda_align=0.0, tgt_shift_index=0):
+        super(PPOLossCompute, self).__init__(criterion, generator)
+        self.lambda_coverage = lambda_coverage
+        self.lambda_align = lambda_align
+        self.tgt_shift_index = tgt_shift_index
+        self.model = model
+        self.discount_factor = discount_factor
+        self.multi_step = multi_step
+        self.lambda_xent = lambda_xent
+        self.tgt_vocab = tgt_vocab
+        self.eos_idx = eos_idx
+        self.unk_idx = unk_idx
+        self.unsuper_reward = unsuper_reward
+        self.ppo_eps_clip = ppo_eps_clip
+
+    def _compute_loss(self, batch, output, target, std_attn=None, target_critic=None,
+                      coverage_attn=None, align_head=None, ref_align=None, src=None):
+
+        if self.model.train_mode == TrainMode.ACTOR:
+            bottled_output = self._bottle(output)
+
+            scores = self.generator(bottled_output)
+            gtruth = target.view(-1)
+
+            loss = self.criterion(scores, gtruth)
+            if self.lambda_coverage != 0.0:
+                coverage_loss = self._compute_coverage_loss(
+                    std_attn=std_attn, coverage_attn=coverage_attn)
+                loss += coverage_loss
+            if self.lambda_align != 0.0:
+                if align_head.dtype != loss.dtype:  # Fix FP16
+                    align_head = align_head.to(loss.dtype)
+                if ref_align.dtype != loss.dtype:
+                    ref_align = ref_align.to(loss.dtype)
+                align_loss = self._compute_alignement_loss(
+                    align_head=align_head, ref_align=ref_align)
+                loss += align_loss
+            stats = self._stats(loss.clone(), scores, gtruth)
+
+            return (loss, None), stats
+
+        else:
+            V = self.model.critic(target, output, self.eos_idx)
+
+            old_log_pol_dist, new_log_pol_dist = attns
+            scores = self._bottle(new_log_pol_dist)
+            gtruth = target.view(-1)
+
+            # reward_tensor = self._compute_reward(output[1:], target[1:], bleu_add_1)
+
+            reward_tensor = self.unsuper_reward.compute_reward(src, target[1:], output[1:], src.device.index)
+
+            reward_to_go_tensor = self._compute_reward_to_go(reward_tensor)
+
+            critic_loss = ((V[:-1] - reward_to_go_tensor)**2).sum((0,1))
+
+            if self.model.train_mode == TrainMode.CRITIC:
+
+                stats = self._stats(critic_loss.clone(), scores, gtruth)
+
+                return (None, critic_loss), stats
+            else:
+
+                old_log_pol_dist_mod = old_log_pol_dist.gather(2, output.to(torch.int64))
+                new_log_pol_dist_mod = new_log_pol_dist.gather(2, output.to(torch.int64))
+
+                xent_loss = self.criterion(scores, gtruth)
+
+                future_V = self._prepare_future_V(V.detach())
+
+                multi_step_return = self._maybe_compute_multi_step_return(reward_tensor)
+
+                ratios = torch.exp(new_log_pol_dist_mod - old_log_pol_dist_mod.detach())
+                advantages = (multi_step_return + (self.discount_factor ** self.multi_step) * future_V - V[:-1].detach())
+
+                surr1 = ratios * advantages
+                surr2 = torch.clamp(ratios, 1-self.ppo_eps_clip, 1+self.ppo_eps_clip)
+
+                policy_loss = -torch.min(surr1, surr2).sum()
+
+                print('Policy Loss: {}'.format(policy_loss))
+
+                actor_loss = policy_loss + self.lambda_xent * xent_loss
+
+                stats = self._stats(actor_loss.clone(), scores, gtruth)
+
+                return (actor_loss, critic_loss), stats
+
+    def _compute_reward(self, output, target, reward_function):
+
+        reward_tensor = torch.zeros(output.shape[0], output.shape[1]).to('cuda')
+
+        for col in range(0, output.shape[1]):
+            ref = ''
+            hyp = ''
+            reward_list = []
+
+            for ref_row in range(0, target.shape[0]):
+
+                tok_idx = int(target[ref_row, col])
+
+                if tok_idx == self.padding_idx:
+                    break
+                else:
+                    tok = self.tgt_vocab.itos[tok_idx]
+                    ref += tok + ' '
+
+            for hyp_row in range(0, output.shape[0]):
+
+                tok_idx = int(output[hyp_row, col])
+
+                if tok_idx == self.padding_idx:
+                    break
+                else:
+                    tok = self.tgt_vocab.itos[tok_idx]
+                    hyp += tok + ' '
+
+                    reward = reward_function(hyp, ref)
+
+                    reward_list.append(reward)
+
+                    if hyp_row == output.shape[0] - 1:
+                        hyp_row += 1
+
+            reward_tensor[:hyp_row, col] = torch.tensor(reward_list)
+
+        # reward shaping
+        reward_tensor[1:] -= reward_tensor[:-1].clone()
+
+        reward_tensor = reward_tensor.unsqueeze(2)
+
+        return reward_tensor
+
+    def _compute_reward_to_go(self, reward_tensor):
+
+        reward_to_go_tensor = reward_tensor
+
+        for row in range(reward_tensor.shape[0]-2, -1, -1):
+
+            reward_to_go_tensor[row, :, :] += self.discount_factor * reward_to_go_tensor[row + 1, :, :]
+
+        return reward_to_go_tensor
+
+    def _maybe_compute_multi_step_return(self, reward_tensor):
+
+        if self.multi_step == 1:
+            return reward_tensor
+        else:
+            multi_step_return = reward_tensor
+
+            for row in range(0, reward_tensor.shape[0]-1):
+                for step in range(row + 1, min(row + self.multi_step, reward_tensor.shape[0])):
+                    multi_step_return[row, :] += (self.discount_factor ** (step - row)) * reward_tensor[step, :]
+            return multi_step_return
+
+    def _prepare_future_V(self, V):
+
+        if self.multi_step == 1:
+            return V[1:]
+        else:
+            future_V = torch.zeros(V.shape[0]-1, V.shape[1], V.shape[2]).to('cuda')
+
+            future_V[:V[self.multi_step:].shape[0]] += V[self.multi_step:]
+            return future_V
+
+    def _add_coverage_shard_state(self, shard_state, attns):
+        coverage = attns.get("coverage", None)
+        std = attns.get("std", None)
+        assert attns is not None
+        assert coverage is not None, (
+            "lambda_coverage != 0.0 requires coverage attention"
+            " that could not be found in the model."
+            " Transformer decoders do not implement coverage"
+        )
+        assert std is not None, (
+            "lambda_coverage != 0.0 requires attention mechanism"
+            " that could not be found in the model."
+        )
+        shard_state.update({"std_attn": attns.get("std"),
+                            "coverage_attn": coverage})
+
+    def _compute_coverage_loss(self, std_attn, coverage_attn):
+        covloss = torch.min(std_attn, coverage_attn).sum()
+        covloss *= self.lambda_coverage
+        return covloss
+
+    def _add_align_shard_state(self, shard_state, batch, range_start,
+                               range_end, attns):
+        # attn_align should be in (batch_size, pad_tgt_size, pad_src_size)
+        attn_align = attns.get("align", None)
+        # align_idx should be a Tensor in size([N, 3]), N is total number
+        # of align src-tgt pair in current batch, each as
+        # ['sent_N°_in_batch', 'tgt_id+1', 'src_id'] (check AlignField)
+        align_idx = batch.align
+        assert attns is not None
+        assert attn_align is not None, (
+            "lambda_align != 0.0 requires " "alignement attention head"
+        )
+        assert align_idx is not None, (
+            "lambda_align != 0.0 requires " "provide guided alignement"
+        )
+        pad_tgt_size, batch_size, _ = batch.tgt.size()
+        pad_src_size = batch.src[0].size(0)
+        align_matrix_size = [batch_size, pad_tgt_size, pad_src_size]
+        ref_align = onmt.utils.make_batch_align_matrix(
+            align_idx, align_matrix_size, normalize=True
+        )
+        # NOTE: tgt-src ref alignement that in range_ of shard
+        # (coherent with batch.tgt)
+        shard_state.update(
+            {
+                "align_head": attn_align,
+                "ref_align": ref_align[:, range_start:range_end, :],
+            }
+        )
+
+    def _compute_alignement_loss(self, align_head, ref_align):
+        """Compute loss between 2 partial alignment matrix."""
+        # align_head contains value in [0, 1) presenting attn prob,
+        # 0 was resulted by the context attention src_pad_mask
+        # So, the correspand position in ref_align should also be 0
+        # Therefore, clip align_head to > 1e-18 should be bias free.
+        align_loss = -align_head.clamp(min=1e-18).log().mul(ref_align).sum()
+        align_loss *= self.lambda_align
+        return align_loss
+
+    def _make_shard_state(self, batch, output, range_, attns=None, src=None):
+        range_start = range_[0] + self.tgt_shift_index
+        range_end = range_[1]
+
+        if self.model.train_mode == TrainMode.ACTOR:
+            range_start += 1
+
+            shard_state = {
+                "output": output,
+                "target": batch.tgt[range_start:range_end, :, 0],
+            }
+        else:
+
+            old_log_pol_dist, new_log_pol_dist = attns
+
+            shard_state = {
+                "output": output[range_start:range_end, :],
+                "target": batch.tgt[range_start:range_end, :, 0],
+                "std_attn": (old_log_pol_dist[range_start:range_end, :, :], new_log_pol_dist[range_start:range_end, :, :]),
             }
 
         if src is not None:
