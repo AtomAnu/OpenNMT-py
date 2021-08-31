@@ -109,6 +109,8 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global
                                       dropout_steps=dropout_steps)
     elif opt.model_task == ModelTask.PPO:
 
+        print("PPO Training")
+
         actor_optim, critic_optim = optim
         policy_strategy = opt.policy_strategy[gpu_rank]
         policy_topk_sampling = opt.policy_topk_sampling[gpu_rank]
