@@ -1560,10 +1560,7 @@ class PPOTrainer(object):
         # Basic attributes.
         self.model = model
         self.old_policy = copy.deepcopy(model.actor).cuda()
-        print('model gen: {}'.format(model.generator))
         self.old_policy.generator = copy.deepcopy(model.actor.generator).cuda()
-        print('old model gen: {}'.format(self.old_policy.generator))
-
         self.train_loss = train_loss
         self.valid_loss = valid_loss
         self.actor_optim = actor_optim
@@ -1850,14 +1847,17 @@ class PPOTrainer(object):
 
                     print('Running OLD policy')
 
-                    gen_seq, old_log_pol_dist = self.old_policy(
-                        src, tgt, src_lengths, bptt=bptt,
-                        with_align=self.with_align,
-                        train_mode=TrainMode.AC,
-                        policy_strategy=self.policy_strategy,
-                        policy_topk_sampling=self.policy_topk_sampling,
-                        policy_sampling_temperature=self.policy_sampling_temperature,
-                        policy_topp_sampling=self.policy_topp_sampling)
+                    with torch.no_grad():
+                        gen_seq, old_log_pol_dist = self.old_policy(
+                            src, tgt, src_lengths, bptt=bptt,
+                            with_align=self.with_align,
+                            train_mode=TrainMode.AC,
+                            tgt_field=self.model.tgt_field,
+                            policy_strategy=self.policy_strategy,
+                            policy_topk_sampling=self.policy_topk_sampling,
+                            policy_sampling_temperature=self.policy_sampling_temperature,
+                            policy_topp_sampling=self.policy_topp_sampling,
+                            special_tok_mask=self.special_tok_mask)
 
                     for _ in range(self.ppo_k_epochs):
 
