@@ -1849,6 +1849,7 @@ class PPOTrainer(object):
                     gen_seq, old_log_pol_dist = self.old_policy(
                         src, tgt, src_lengths, bptt=bptt,
                         with_align=self.with_align,
+                        train_mode=TrainMode.AC,
                         policy_strategy=self.policy_strategy,
                         policy_topk_sampling=self.policy_topk_sampling,
                         policy_sampling_temperature=self.policy_sampling_temperature,
