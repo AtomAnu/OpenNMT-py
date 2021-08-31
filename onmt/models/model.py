@@ -521,11 +521,13 @@ class ACNMTModel(BaseModel):
                 policy_topk_sampling=-1,
                 policy_sampling_temperature=1,
                 policy_topp_sampling=-1,
-                special_tok_mask=None):
+                special_tok_mask=None,
+                gen_seq=None):
 
         return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode,
                           self.tgt_field, policy_strategy, policy_topk_sampling,
-                          policy_sampling_temperature, policy_topp_sampling, special_tok_mask)
+                          policy_sampling_temperature, policy_topp_sampling,
+                          special_tok_mask, gen_seq)
 
     def update_dropout(self, dropout):
         self.actor.update_dropout(dropout)
@@ -585,11 +587,13 @@ class A2CNMTModel(BaseModel):
                 policy_topk_sampling=-1,
                 policy_sampling_temperature=1,
                 policy_topp_sampling=-1,
-                special_tok_mask=None):
+                special_tok_mask=None,
+                gen_seq=None):
 
         return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode,
                           self.tgt_field, policy_strategy, policy_topk_sampling,
-                          policy_sampling_temperature, policy_topp_sampling, special_tok_mask)
+                          policy_sampling_temperature, policy_topp_sampling,
+                          special_tok_mask, gen_seq)
 
     def update_dropout(self, dropout):
         self.actor.update_dropout(dropout)
