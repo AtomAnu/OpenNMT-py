@@ -54,8 +54,11 @@ class SemanticEval():
         :return: reward_tensor [seq_len x bs x 1]
         """
 
+        print('1/3')
         fluency_scores = self._compute_fluency(hyp_list)
+        print('2/3')
         tlss_scores = self._compute_token_level_semantic_similarity(src_list, hyp_list)
+        print('3/3')
         slss_scores = self._compute_sentence_level_semantic_similarity(src_list, hyp_list)
 
         avg_exp_fluency = fluency_scores.exp().mean()
@@ -92,9 +95,6 @@ class SemanticEval():
         return torch.tensor(fluency_scores).to(self.device)
 
     def _compute_token_level_semantic_similarity(self, src_list, sent_list):
-
-        print(len(src_list))
-        print(len(sent_list))
 
         with torch.no_grad():
             self.bert_score_metric.add_batch(predictions=sent_list, references=src_list)
