@@ -1859,6 +1859,8 @@ class PPOTrainer(object):
                             policy_topp_sampling=self.policy_topp_sampling,
                             special_tok_mask=self.special_tok_mask)
 
+                    reward_tensor = None
+
                     for _ in range(self.ppo_k_epochs):
 
                         print('Running NEW policy')
@@ -1873,7 +1875,7 @@ class PPOTrainer(object):
                             gen_seq=gen_seq)
 
                         # 3. Compute loss.
-                        loss, batch_stats = self.train_loss(
+                        loss, reward_tensor, batch_stats = self.train_loss(
                             batch,
                             gen_seq,
                             (old_log_pol_dist, new_log_pol_dist),
@@ -1882,7 +1884,9 @@ class PPOTrainer(object):
                             shard_size=self.shard_size,
                             trunc_start=j,
                             trunc_size=trunc_size,
-                            src=src)
+                            src=src,
+                            reward_tensor=reward_tensor,
+                            ppo=True)
 
                         actor_loss, critic_loss = loss
 

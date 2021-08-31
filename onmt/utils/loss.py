@@ -201,7 +201,9 @@ class LossComputeBase(nn.Module):
                  shard_size=0,
                  trunc_start=0,
                  trunc_size=None,
-                 src=None):
+                 src=None,
+                 reward_tensor=None,
+                 ppo=False):
         """Compute the forward loss, possibly in shards in which case this
         method also runs the backward pass and returns ``None`` as the loss
         value.
@@ -236,7 +238,10 @@ class LossComputeBase(nn.Module):
         if shard_size == 0:
             # TODO support original OpenNMT pipeline
 
-            loss, stats = self._compute_loss(batch, target_critic=target_critic, **shard_state)
+            if ppo:
+                loss, reward_tensor, stats = self._compute_loss(batch, target_critic=target_critic, reward=reward_tensor, **shard_state)
+            else:
+                loss, stats = self._compute_loss(batch, target_critic=target_critic, **shard_state)
 
             actor_loss, critic_loss = loss
 
@@ -246,7 +251,10 @@ class LossComputeBase(nn.Module):
             if critic_loss is not None:
                 critic_loss = critic_loss / float(normalization)
 
-            return (actor_loss, critic_loss), stats
+            if ppo:
+                return (actor_loss, critic_loss), reward_tensor, stats
+            else:
+                return (actor_loss, critic_loss), stats
         batch_stats = onmt.utils.Statistics()
         for shard in shards(shard_state, shard_size):
             loss, stats = self._compute_loss(batch, **shard)
@@ -957,7 +965,7 @@ class PPOLossCompute(LossComputeBase):
         self.ppo_eps_clip = ppo_eps_clip
 
     def _compute_loss(self, batch, output, target, std_attn=None, target_critic=None,
-                      coverage_attn=None, align_head=None, ref_align=None, src=None):
+                      coverage_attn=None, align_head=None, ref_align=None, src=None, reward=None):
 
         if self.model.train_mode == TrainMode.ACTOR:
             bottled_output = self._bottle(output)
@@ -990,8 +998,10 @@ class PPOLossCompute(LossComputeBase):
             gtruth = target.view(-1)
 
             # reward_tensor = self._compute_reward(output[1:], target[1:], bleu_add_1)
-
-            reward_tensor = self.unsuper_reward.compute_reward(src, target[1:], output[1:], src.device.index)
+            if reward is None:
+                reward_tensor = self.unsuper_reward.compute_reward(src, target[1:], output[1:], src.device.index)
+            else:
+                reward_tensor = reward
 
             reward_to_go_tensor = self._compute_reward_to_go(reward_tensor)
 
@@ -1001,7 +1011,7 @@ class PPOLossCompute(LossComputeBase):
 
                 stats = self._stats(critic_loss.clone(), scores, gtruth)
 
-                return (None, critic_loss), stats
+                return (None, critic_loss), reward_tensor, stats
             else:
 
                 old_log_pol_dist_mod = old_log_pol_dist.gather(2, output.to(torch.int64))[:-1]
@@ -1027,7 +1037,7 @@ class PPOLossCompute(LossComputeBase):
 
                 stats = self._stats(actor_loss.clone(), scores, gtruth)
 
-                return (actor_loss, critic_loss), stats
+                return (actor_loss, critic_loss), reward_tensor, stats
 
     def _compute_reward(self, output, target, reward_function):
 
