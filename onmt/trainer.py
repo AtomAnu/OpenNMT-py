@@ -1561,6 +1561,10 @@ class PPOTrainer(object):
         self.model = model
         self.old_policy = copy.deepcopy(model.actor).cuda()
         self.old_policy.generator = copy.deepcopy(model.actor.generator).cuda()
+
+        print('model gen: {}'.format(model.actor.generator))
+        print('old model gen: {}'.format(self.old_policy.generator))
+
         self.train_loss = train_loss
         self.valid_loss = valid_loss
         self.actor_optim = actor_optim

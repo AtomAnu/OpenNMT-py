@@ -113,6 +113,7 @@ class Actor(nn.Module):
 
         self.encoder = encoder
         self.decoder = decoder
+        self.generator = None
 
     def forward(self, src, tgt, lengths, bptt=False, with_align=False, train_mode=TrainMode.ACTOR, tgt_field=None,
                 policy_strategy=PolicyStrategy.Categorical, policy_topk_sampling=-1, policy_sampling_temperature=1,
