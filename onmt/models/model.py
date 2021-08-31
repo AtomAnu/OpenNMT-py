@@ -130,6 +130,8 @@ class Actor(nn.Module):
                 dec_in = gen_seq[:-1]
                 print('Dec in: {}'.format(dec_in.shape))
 
+            print('Tgt in: {}'.format(tgt[:-1].shape))
+
             dec_out, attns = self.decoder(dec_in, memory_bank,
                                           memory_lengths=lengths,
                                           with_align=with_align)
