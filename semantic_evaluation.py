@@ -143,7 +143,7 @@ iw_hyp_files = ['iw_a3c_actor_lower.txt',
 
 gpu_id = 0
 
-semantic_eval = SemanticEval(1,0,1,0)
+semantic_eval = SemanticEval(1,1,1,0)
 
 print('Evaluating on the OS test set')
 
