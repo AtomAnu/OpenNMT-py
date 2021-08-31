@@ -1844,6 +1844,8 @@ class PPOTrainer(object):
                     attns -> log policy distribution 
                     """
 
+                    print('Running OLD policy')
+
                     gen_seq, old_log_pol_dist = self.old_policy(
                         src, tgt, src_lengths, bptt=bptt,
                         with_align=self.with_align,
@@ -1853,6 +1855,8 @@ class PPOTrainer(object):
                         policy_topp_sampling=self.policy_topp_sampling)
 
                     for _ in range(self.ppo_k_epochs):
+
+                        print('Running NEW policy')
 
                         new_log_pol_dist = self.model(
                             src, tgt, src_lengths, bptt=bptt,
