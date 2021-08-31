@@ -1687,7 +1687,7 @@ class PPOTrainer(object):
 
         for i, (batches, normalization) in enumerate(
                 self._accum_batches(train_iter)):
-            step = self.actor_optim.training_step
+            step = (self.actor_optim.training_step - 1) % self.ppo_k_epochs
             # UPDATE DROPOUT
             self._maybe_update_dropout(step)
 
