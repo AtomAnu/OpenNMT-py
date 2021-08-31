@@ -109,7 +109,7 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global
                                       dropout_steps=dropout_steps)
     elif opt.model_task == ModelTask.PPO:
 
-        print("PPO Training")
+        print("PPO Training, Train Mode: {}".format(opt.train_mode))
 
         actor_optim, critic_optim = optim
         policy_strategy = opt.policy_strategy[gpu_rank]
