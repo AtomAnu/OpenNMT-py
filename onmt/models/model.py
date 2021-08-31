@@ -128,6 +128,8 @@ class Actor(nn.Module):
                 dec_in = tgt[:-1]  # exclude last target from inputs
             else:
                 dec_in = gen_seq[:-1]
+                print('Dec in: {}'.format(dec_in.shape))
+
             dec_out, attns = self.decoder(dec_in, memory_bank,
                                           memory_lengths=lengths,
                                           with_align=with_align)
