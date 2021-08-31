@@ -54,10 +54,13 @@ class SemanticEval():
         :return: reward_tensor [seq_len x bs x 1]
         """
 
+        avg_exp_fluency, avg_exp_tlss, avg_exp_slss = 0, 0, 0
+
         print('1/3')
         fluency_scores = self._compute_fluency(hyp_list)
         print('2/3')
-        tlss_scores = self._compute_token_level_semantic_similarity(src_list, hyp_list)
+        if bool(self.w_tlss):
+            tlss_scores = self._compute_token_level_semantic_similarity(src_list, hyp_list)
         print('3/3')
         slss_scores = self._compute_sentence_level_semantic_similarity(src_list, hyp_list)
 
@@ -140,7 +143,7 @@ iw_hyp_files = ['iw_a3c_actor_lower.txt',
 
 gpu_id = 0
 
-semantic_eval = SemanticEval(1,1,1,0)
+semantic_eval = SemanticEval(1,0,1,0)
 
 print('Evaluating on the OS test set')
 
