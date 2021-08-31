@@ -386,13 +386,13 @@ def model_opts(parser):
         "-ppo_k_epochs",
         "--ppo_k_epochs",
         type=int,
-        default=80,
+        default=20,
         help="[For PPO] Update policy for k epochs in one PPO update")
     group.add(
         "-ppo_eps_clip",
         "--ppo_eps_clip",
         type=float,
-        default=0.2,
+        default=0.1,
         help="[For PPO] Clip parameter for PPO [1-eps, 1+eps]"
     )
 
