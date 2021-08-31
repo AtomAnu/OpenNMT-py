@@ -66,7 +66,7 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global
 
     special_tok_mask = prepare_special_tok_mask(fields["tgt"])
 
-    if opt.model_task not in [ModelTask.AC, ModelTask.A2C, ModelTask.A3C]:
+    if opt.model_task not in [ModelTask.AC, ModelTask.A2C, ModelTask.A3C, ModelTask.PPO]:
 
         trainer = onmt.Trainer(model, train_loss, valid_loss, optim, trunc_size,
                                shard_size, norm_method,
