@@ -128,9 +128,6 @@ class Actor(nn.Module):
                 dec_in = tgt[:-1]  # exclude last target from inputs
             else:
                 dec_in = gen_seq[:-1]
-                print('Dec in: {}'.format(dec_in.shape))
-
-            print('Tgt in: {}'.format(tgt[:-1].shape))
 
             dec_out, attns = self.decoder(dec_in, memory_bank,
                                           memory_lengths=lengths,
@@ -149,8 +146,6 @@ class Actor(nn.Module):
                                                policy_topk_sampling, policy_sampling_temperature,
                                                policy_topp_sampling, special_tok_mask)
         else:
-
-            print('AC Training ****')
             with torch.enable_grad():
                 return self._step_wise_forward(src, tgt, lengths, bptt, with_align,
                                                tgt_field, policy_strategy,

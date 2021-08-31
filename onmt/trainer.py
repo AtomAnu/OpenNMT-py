@@ -1560,6 +1560,7 @@ class PPOTrainer(object):
         # Basic attributes.
         self.model = model
         self.old_policy = copy.deepcopy(model.actor).cuda()
+        self.old_policy.generator = copy.deepcopy(model.actor.generator).cuda()
         self.train_loss = train_loss
         self.valid_loss = valid_loss
         self.actor_optim = actor_optim
@@ -1906,6 +1907,7 @@ class PPOTrainer(object):
                                         self.actor_optim.training_step, k)
 
                 self.old_policy = copy.deepcopy(self.model.actor).cuda()
+                self.old_policy.generator = copy.deepcopy(self.model.actor.generator).cuda()
 
                 bptt = True
 
