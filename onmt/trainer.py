@@ -1560,7 +1560,7 @@ class PPOTrainer(object):
         # Basic attributes.
         self.model = model
         self.old_policy = copy.deepcopy(model.actor).cuda()
-        print('model gen: {}'.format(model.actor.generator))
+        print('model gen: {}'.format(model.generator))
         self.old_policy.generator = copy.deepcopy(model.actor.generator).cuda()
         print('old model gen: {}'.format(self.old_policy.generator))
 
