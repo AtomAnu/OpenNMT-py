@@ -985,7 +985,7 @@ class PPOLossCompute(LossComputeBase):
         else:
             V = self.model.critic(target, output, self.eos_idx)
 
-            old_log_pol_dist, new_log_pol_dist = attns
+            old_log_pol_dist, new_log_pol_dist = std_attn
             scores = self._bottle(new_log_pol_dist)
             gtruth = target.view(-1)
 
