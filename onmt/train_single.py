@@ -152,6 +152,7 @@ def async_main(global_model, optim, model_opt, opt, fields, transforms_cls, chec
     model.count_parameters(log=logger.info)
     model.actor.load_state_dict(global_model.actor.state_dict())
     model.critic.load_state_dict(global_model.critic.state_dict())
+    model.generator.load_state_dict(global_model.generator.state_dict())
 
     # Build model saver
     model_saver = build_model_saver(model_opt, opt, global_model, fields, optim)

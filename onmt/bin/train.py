@@ -116,6 +116,13 @@ def train(opt):
         checkpoint = None
         opt.train_from = ''
 
+    if checkpoint is not None and opt.model_task == ModelTask.A3C:
+        model_params = checkpoint['model']
+        gen_params = checkpoint['generator']
+
+        checkpoint = None
+        opt.train_from = ''
+
     if opt.async or opt.model_task == ModelTask.A3C and opt.train_mode in [TrainMode.CRITIC, TrainMode.AC]:
 
         print('Performing Async Training')
@@ -131,6 +138,10 @@ def train(opt):
         global_model = build_model(model_opt, opt, fields, checkpoint, gpu_id=global_gpu_id)
 
         if opt.async and opt.model_task == ModelTask.AC:
+            global_model.load_state_dict(model_params, strict=False)
+            global_model.generator.load_state_dict(gen_params, strict=False)
+
+        if opt.model_task == ModelTask.A3C:
             global_model.load_state_dict(model_params, strict=False)
             global_model.generator.load_state_dict(gen_params, strict=False)
 
