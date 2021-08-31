@@ -1687,7 +1687,7 @@ class PPOTrainer(object):
 
         for i, (batches, normalization) in enumerate(
                 self._accum_batches(train_iter)):
-            step = (self.actor_optim.training_step - 1) % self.ppo_k_epochs
+            step = int((self.actor_optim.training_step - 1) / self.ppo_k_epochs)
             # UPDATE DROPOUT
             self._maybe_update_dropout(step)
 
@@ -1900,9 +1900,9 @@ class PPOTrainer(object):
                             if critic_loss is not None:
                                 self.critic_optim.backward(critic_loss)
 
-                            #     gnorm_actor = nn.utils.clip_grad_norm_(self.model.actor.parameters(), 5.0)
+                            gnorm_actor = nn.utils.clip_grad_norm_(self.model.actor.parameters(), 5.0)
                             self.actor_optim.step()
-                            #     gnorm_critic = nn.utils.clip_grad_norm_(self.model.critic.parameters(), 5.0)
+                            gnorm_critic = nn.utils.clip_grad_norm_(self.model.critic.parameters(), 5.0)
                             self.critic_optim.step()
 
                             total_stats.update(batch_stats)
