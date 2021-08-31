@@ -99,7 +99,7 @@ class SemanticEval():
         with torch.no_grad():
             self.bert_score_metric.add_batch(predictions=sent_list, references=src_list)
             scores = self.bert_score_metric.compute(model_type=self.bert_score_model_type,
-                                                    device=self.device)
+                                                    device=self.device, use_fast_tokenizer=True)
 
         return torch.tensor(scores['f1']).to(self.device)
 
