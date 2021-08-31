@@ -1004,8 +1004,8 @@ class PPOLossCompute(LossComputeBase):
                 return (None, critic_loss), stats
             else:
 
-                old_log_pol_dist_mod = old_log_pol_dist.gather(2, output.to(torch.int64))
-                new_log_pol_dist_mod = new_log_pol_dist.gather(2, output.to(torch.int64))
+                old_log_pol_dist_mod = old_log_pol_dist.gather(2, output.to(torch.int64))[:-1]
+                new_log_pol_dist_mod = new_log_pol_dist.gather(2, output.to(torch.int64))[:-1]
 
                 xent_loss = self.criterion(scores, gtruth)
 
