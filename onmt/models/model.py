@@ -149,6 +149,8 @@ class Actor(nn.Module):
                                                policy_topk_sampling, policy_sampling_temperature,
                                                policy_topp_sampling, special_tok_mask)
         else:
+
+            print('AC Training ****')
             with torch.enable_grad():
                 return self._step_wise_forward(src, tgt, lengths, bptt, with_align,
                                                tgt_field, policy_strategy,
