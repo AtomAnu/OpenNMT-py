@@ -177,7 +177,7 @@ with open(os_file_path + os_src_file, 'r') as os_src:
                 print('Fluency T-Test: {}'.format(ttest(base_f, var_f)))
                 print('TLSS T-Test: {}'.format(ttest(base_tlss, var_tlss)))
                 print('SLSS T-Test: {}'.format(ttest(base_slss, var_slss)))
-                print('***********')
+            print('***********')
 
 
 print('Evaluating on the IW test set')
@@ -207,7 +207,7 @@ with open(iw_file_path + iw_src_file, 'r') as iw_src:
                 print('Fluency T-Test: {}'.format(ttest(base_f, var_f)))
                 print('TLSS T-Test: {}'.format(ttest(base_tlss, var_tlss)))
                 print('SLSS T-Test: {}'.format(ttest(base_slss, var_slss)))
-                print('***********')
+            print('***********')
 
 
 
