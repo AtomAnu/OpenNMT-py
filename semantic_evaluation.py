@@ -147,6 +147,8 @@ gpu_id = 0
 
 semantic_eval = SemanticEval(1,1,1,0)
 
+total_var_f, total_var_tlss, total_var_slss = [],[],[]
+
 print('Evaluating on the OS test set')
 
 with open(os_file_path + os_src_file, 'r') as os_src:
@@ -168,6 +170,10 @@ with open(os_file_path + os_src_file, 'r') as os_src:
                 avg_exp_fluency, avg_exp_tlss, avg_exp_slss, \
                 var_f, var_tlss, var_slss = semantic_eval.eval(os_src_lines, os_hyp_lines)
 
+                total_var_f += var_f
+                total_var_tlss += var_tlss
+                total_var_slss += var_slss
+
             print('Fluency: {}'.format(avg_exp_fluency))
             print('TLSS: {}'.format(avg_exp_tlss))
             print('SLSS: {}'.format(avg_exp_slss))
@@ -179,6 +185,13 @@ with open(os_file_path + os_src_file, 'r') as os_src:
                 print('SLSS T-Test: {}'.format(ttest(var_slss, base_slss)))
             print('***********')
 
+    print('#### TOTAL T-Test ####')
+    print('Fluency T-Test: {}'.format(ttest(total_var_f, base_f)))
+    print('TLSS T-Test: {}'.format(ttest(total_var_tlss, base_tlss)))
+    print('SLSS T-Test: {}'.format(ttest(total_var_slss, base_slss)))
+    print('***********')
+
+total_var_f, total_var_tlss, total_var_slss = [],[],[]
 
 print('Evaluating on the IW test set')
 
@@ -198,6 +211,10 @@ with open(iw_file_path + iw_src_file, 'r') as iw_src:
                 avg_exp_fluency, avg_exp_tlss, avg_exp_slss, \
                 var_f, var_tlss, var_slss = semantic_eval.eval(iw_src_lines, iw_hyp_lines)
 
+                total_var_f += var_f
+                total_var_tlss += var_tlss
+                total_var_slss += var_slss
+
             print('Fluency: {}'.format(avg_exp_fluency))
             print('TLSS: {}'.format(avg_exp_tlss))
             print('SLSS: {}'.format(avg_exp_slss))
@@ -209,5 +226,10 @@ with open(iw_file_path + iw_src_file, 'r') as iw_src:
                 print('SLSS T-Test: {}'.format(ttest(var_slss, base_slss)))
             print('***********')
 
+    print('#### TOTAL T-Test ####')
+    print('Fluency T-Test: {}'.format(ttest(total_var_f, base_f)))
+    print('TLSS T-Test: {}'.format(ttest(total_var_tlss, base_tlss)))
+    print('SLSS T-Test: {}'.format(ttest(total_var_slss, base_slss)))
+    print('***********')
 
 
