@@ -64,9 +64,9 @@ class SemanticEval():
         # print('3/3')
         slss_scores = self._compute_sentence_level_semantic_similarity(src_list, hyp_list)
 
-        avg_exp_fluency = (fluency_scores + 5).exp().mean()
-        avg_exp_tlss = (tlss_scores + 5).exp().mean()
-        avg_exp_slss = (slss_scores + 5).exp().mean()
+        avg_exp_fluency = (fluency_scores).exp().mean()
+        avg_exp_tlss = (tlss_scores).exp().mean()
+        avg_exp_slss = (slss_scores).exp().mean()
 
         return avg_exp_fluency, avg_exp_tlss, avg_exp_slss
 
