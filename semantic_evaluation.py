@@ -6,6 +6,7 @@ from datasets import load_metric
 from sentence_transformers import SentenceTransformer
 from torch.nn import CosineSimilarity
 import math
+import scipy.stats.ttest_ind as ttest
 
 class SemanticEval():
 
@@ -68,7 +69,8 @@ class SemanticEval():
         avg_exp_tlss = (tlss_scores).exp().mean()
         avg_exp_slss = (slss_scores).exp().mean()
 
-        return avg_exp_fluency, avg_exp_tlss, avg_exp_slss
+        return avg_exp_fluency, avg_exp_tlss, avg_exp_slss, \
+               fluency_scores.cpu().tolist(), tlss_scores.cpu().tolist(), slss_scores.cpu().tolist()
 
     def _GPTLM_tokenize(self, word):
 
@@ -157,13 +159,24 @@ with open(os_file_path + os_src_file, 'r') as os_src:
 
             os_hyp_lines = os_hyp.readlines()
 
-            print('Evaluating: {}'.format(file))
+            print('**** Evaluating: {} ****'.format(file))
 
-            avg_exp_fluency, avg_exp_tlss, avg_exp_slss = semantic_eval.eval(os_src_lines, os_hyp_lines)
+            if 'actor' in file:
+                avg_exp_fluency, avg_exp_tlss, avg_exp_slss,\
+                base_f, base_tlss, base_slss = semantic_eval.eval(os_src_lines, os_hyp_lines)
+            else:
+                avg_exp_fluency, avg_exp_tlss, avg_exp_slss, \
+                var_f, var_tlss, var_slss = semantic_eval.eval(os_src_lines, os_hyp_lines)
 
             print('Fluency: {}'.format(avg_exp_fluency))
             print('TLSS: {}'.format(avg_exp_tlss))
             print('SLSS: {}'.format(avg_exp_slss))
+            print('#### T-Test ####')
+            print('Fluency T-Test: {}'.format(ttest(base_f, var_f)))
+            print('TLSS T-Test: {}'.format(ttest(base_tlss, var_tlss)))
+            print('SLSS T-Test: {}'.format(ttest(base_slss, var_slss)))
+            print('***********')
+
 
 print('Evaluating on the IW test set')
 
@@ -174,12 +187,22 @@ with open(iw_file_path + iw_src_file, 'r') as iw_src:
         with open(iw_file_path + file, 'r') as iw_hyp:
             iw_hyp_lines = iw_hyp.readlines()
 
-            print('Evaluating: {}'.format(file))
+            print('**** Evaluating: {} ****'.format(file))
 
-            avg_exp_fluency, avg_exp_tlss, avg_exp_slss = semantic_eval.eval(iw_src_lines, iw_hyp_lines)
+            if 'actor' in file:
+                avg_exp_fluency, avg_exp_tlss, avg_exp_slss, \
+                base_f, base_tlss, base_slss = semantic_eval.eval(iw_src_lines, iw_hyp_lines)
+            else:
+                avg_exp_fluency, avg_exp_tlss, avg_exp_slss, \
+                var_f, var_tlss, var_slss = semantic_eval.eval(iw_src_lines, iw_hyp_lines)
 
             print('Fluency: {}'.format(avg_exp_fluency))
             print('TLSS: {}'.format(avg_exp_tlss))
             print('SLSS: {}'.format(avg_exp_slss))
+            print('#### T-Test ####')
+            print('Fluency T-Test: {}'.format(ttest(base_f, var_f)))
+            print('TLSS T-Test: {}'.format(ttest(base_tlss, var_tlss)))
+            print('SLSS T-Test: {}'.format(ttest(base_slss, var_slss)))
+            print('***********')
 
 
