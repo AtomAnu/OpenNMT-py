@@ -70,7 +70,8 @@ class SemanticEval():
         avg_exp_slss = (slss_scores).exp().mean()
 
         return avg_exp_fluency, avg_exp_tlss, avg_exp_slss, \
-               fluency_scores.exp().cpu().tolist(), tlss_scores.exp().cpu().tolist(), slss_scores.exp().cpu().tolist()
+               fluency_scores.exp().cpu().tolist(), tlss_scores.exp().cpu().tolist(), slss_scores.exp().cpu().tolist(), \
+               (fluency_scores.exp() + tlss_scores.exp() + slss_scores.exp()).cpu().tolist()
 
     def _GPTLM_tokenize(self, word):
 
@@ -147,7 +148,7 @@ gpu_id = 0
 
 semantic_eval = SemanticEval(1,1,1,0)
 
-total_var_f, total_var_tlss, total_var_slss = [],[],[]
+total_var_f, total_var_tlss, total_var_slss, total_var_sum = [],[],[],[]
 
 print('Evaluating on the OS test set')
 
@@ -165,14 +166,15 @@ with open(os_file_path + os_src_file, 'r') as os_src:
 
             if 'actor' in file:
                 avg_exp_fluency, avg_exp_tlss, avg_exp_slss,\
-                base_f, base_tlss, base_slss = semantic_eval.eval(os_src_lines, os_hyp_lines)
+                base_f, base_tlss, base_slss, base_sum = semantic_eval.eval(os_src_lines, os_hyp_lines)
             else:
                 avg_exp_fluency, avg_exp_tlss, avg_exp_slss, \
-                var_f, var_tlss, var_slss = semantic_eval.eval(os_src_lines, os_hyp_lines)
+                var_f, var_tlss, var_slss, var_sum = semantic_eval.eval(os_src_lines, os_hyp_lines)
 
                 total_var_f += var_f
                 total_var_tlss += var_tlss
                 total_var_slss += var_slss
+                total_var_sum += var_sum
 
             print('Fluency: {}'.format(avg_exp_fluency))
             print('TLSS: {}'.format(avg_exp_tlss))
@@ -189,9 +191,10 @@ with open(os_file_path + os_src_file, 'r') as os_src:
     print('Fluency T-Test: {}'.format(ttest(total_var_f, base_f)))
     print('TLSS T-Test: {}'.format(ttest(total_var_tlss, base_tlss)))
     print('SLSS T-Test: {}'.format(ttest(total_var_slss, base_slss)))
+    print('Sum T-Test: {}'.format(ttest(total_var_sum, base_sum)))
     print('***********')
 
-total_var_f, total_var_tlss, total_var_slss = [],[],[]
+total_var_f, total_var_tlss, total_var_slss, total_var_sum = [],[],[],[]
 
 print('Evaluating on the IW test set')
 
@@ -206,14 +209,15 @@ with open(iw_file_path + iw_src_file, 'r') as iw_src:
 
             if 'actor' in file:
                 avg_exp_fluency, avg_exp_tlss, avg_exp_slss, \
-                base_f, base_tlss, base_slss = semantic_eval.eval(iw_src_lines, iw_hyp_lines)
+                base_f, base_tlss, base_slss, base_sum = semantic_eval.eval(iw_src_lines, iw_hyp_lines)
             else:
                 avg_exp_fluency, avg_exp_tlss, avg_exp_slss, \
-                var_f, var_tlss, var_slss = semantic_eval.eval(iw_src_lines, iw_hyp_lines)
+                var_f, var_tlss, var_slss, var_sum = semantic_eval.eval(iw_src_lines, iw_hyp_lines)
 
                 total_var_f += var_f
                 total_var_tlss += var_tlss
                 total_var_slss += var_slss
+                total_var_sum += var_sum
 
             print('Fluency: {}'.format(avg_exp_fluency))
             print('TLSS: {}'.format(avg_exp_tlss))
@@ -230,6 +234,7 @@ with open(iw_file_path + iw_src_file, 'r') as iw_src:
     print('Fluency T-Test: {}'.format(ttest(total_var_f, base_f)))
     print('TLSS T-Test: {}'.format(ttest(total_var_tlss, base_tlss)))
     print('SLSS T-Test: {}'.format(ttest(total_var_slss, base_slss)))
+    print('Sum T-Test: {}'.format(ttest(total_var_sum, base_sum)))
     print('***********')
 
 
