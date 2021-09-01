@@ -147,6 +147,8 @@ gpu_id = 0
 
 semantic_eval = SemanticEval(1,1,1,0)
 
+rng = np.random.default_rng()
+
 print('Evaluating on the OS test set')
 
 with open(os_file_path + os_src_file, 'r') as os_src:
@@ -174,9 +176,9 @@ with open(os_file_path + os_src_file, 'r') as os_src:
 
             if 'actor' not in file:
                 print('#### T-Test ####')
-                print('Fluency T-Test: {}'.format(ttest(base_f, var_f)))
-                print('TLSS T-Test: {}'.format(ttest(base_tlss, var_tlss)))
-                print('SLSS T-Test: {}'.format(ttest(base_slss, var_slss)))
+                print('Fluency T-Test: {}'.format(ttest(base_f, var_f, permutations=10000, random_state=rng)))
+                print('TLSS T-Test: {}'.format(ttest(base_tlss, var_tlss, permutations=10000, random_state=rng)))
+                print('SLSS T-Test: {}'.format(ttest(base_slss, var_slss, permutations=10000, random_state=rng)))
             print('***********')
 
 
@@ -204,9 +206,9 @@ with open(iw_file_path + iw_src_file, 'r') as iw_src:
 
             if 'actor' not in file:
                 print('#### T-Test ####')
-                print('Fluency T-Test: {}'.format(ttest(base_f, var_f)))
-                print('TLSS T-Test: {}'.format(ttest(base_tlss, var_tlss)))
-                print('SLSS T-Test: {}'.format(ttest(base_slss, var_slss)))
+                print('Fluency T-Test: {}'.format(ttest(base_f, var_f, permutations=10000, random_state=rng)))
+                print('TLSS T-Test: {}'.format(ttest(base_tlss, var_tlss, permutations=10000, random_state=rng)))
+                print('SLSS T-Test: {}'.format(ttest(base_slss, var_slss, permutations=10000, random_state=rng)))
             print('***********')
 
 
