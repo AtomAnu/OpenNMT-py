@@ -6,7 +6,7 @@ from datasets import load_metric
 from sentence_transformers import SentenceTransformer
 from torch.nn import CosineSimilarity
 import math
-import scipy.stats.ttest_ind as ttest
+from scipy.stats import ttest_ind as ttest
 
 class SemanticEval():
 
