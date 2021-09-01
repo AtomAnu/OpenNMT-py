@@ -70,7 +70,7 @@ class SemanticEval():
         avg_exp_slss = (slss_scores).exp().mean()
 
         return avg_exp_fluency, avg_exp_tlss, avg_exp_slss, \
-               fluency_scores.cpu().tolist(), tlss_scores.cpu().tolist(), slss_scores.cpu().tolist()
+               fluency_scores.exp().cpu().tolist(), tlss_scores.exp().cpu().tolist(), slss_scores.exp().cpu().tolist()
 
     def _GPTLM_tokenize(self, word):
 
