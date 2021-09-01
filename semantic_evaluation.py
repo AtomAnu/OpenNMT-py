@@ -129,7 +129,7 @@ os_hyp_files = ['os_a3c_actor_lower.txt',
                 'os_ac_100_lower.txt',
                 'os_ac_async_100_lower_lr_act.txt',
                 'os_a2c_100_lower_old.txt',
-                'os_a3c_100_lower.txt',
+                'os_a3c_4gpu_10.txt',
                 'os_ppo_50.txt']
 
 iw_file_path = 'data/iwslt2014-test/'
@@ -138,7 +138,7 @@ iw_hyp_files = ['iw_a3c_actor_lower.txt',
                 'iw_ac_100_lower.txt',
                 'iw_ac_async_100_lower_lr_act.txt',
                 'iw_a2c_100_lower_old.txt',
-                'iw_a3c_100_lower.txt',
+                'iw_a3c_4gpu_10.txt',
                 'iw_ppo_50.txt']
 
 gpu_id = 0
