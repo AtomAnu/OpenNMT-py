@@ -25,42 +25,47 @@ data:
 
 # General opts
 save_model: data/OpenSubtitles-v2016/joint_training/ac-bleu/model
-train_from: data/OpenSubtitles-v2016/critic_pretraining/ac-2gpu-new/model_step_200000.pt
+train_from: data/OpenSubtitles-v2016/critic_pretraining/ac-4gpu-lower/model_step_300000.pt
+reset_optim: "all"
 keep_checkpoint: 50
 save_checkpoint_steps: 100
 average_decay: 0.0005
 seed: 1234
 report_every: 1
-train_steps: 200500
-valid_steps: 100000
+train_steps: 500
+valid_steps: 1000
 
 # Batching
+master_port: 12345
 queue_size: 1024
 bucket_size: 32768
 pool_factor: 8192
 world_size: 1
 gpu_ranks: [0]
 batch_type: "tokens"
-batch_size: 4096
-valid_batch_size: 4096
+batch_size: 2000
+valid_batch_size: 2000
 batch_size_multiple: 1
 max_generator_batches: 0
-accum_count: [3]
+accum_count: [1]
 accum_steps: [0]
 
 # Optimization
 model_dtype: "fp32"
 optim: "adam"
 learning_rate: 2
-warmup_steps: 1
-decay_method: "noam"
+warmup_steps: 0
+decay_method: "none"
 start_decay_steps: 0
+learning_rate_decay: 0.9
 adam_beta2: 0.998
 max_grad_norm: 0
 label_smoothing: 0.1
 param_init: 0
 param_init_glorot: true
 normalization: "tokens"
+actor_learning_rate: 0.000001
+critic_learning_rate: 0.00001
 
 # Model
 model_task: ac
