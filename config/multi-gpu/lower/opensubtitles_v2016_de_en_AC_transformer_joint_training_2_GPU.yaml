@@ -47,7 +47,7 @@ batch_size: 2000
 valid_batch_size: 2000
 batch_size_multiple: 1
 max_generator_batches: 0
-accum_count: [1]
+accum_count: [3]
 accum_steps: [0]
 
 # Optimization
