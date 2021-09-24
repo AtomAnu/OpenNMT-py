@@ -27,11 +27,11 @@ data:
 save_model: data/OpenSubtitles-v2016/joint_training/ac-bleu/model
 train_from: data/OpenSubtitles-v2016/critic_pretraining/ac-2gpu-new/model_step_200000.pt
 keep_checkpoint: 50
-save_checkpoint_steps: 100000
+save_checkpoint_steps: 100
 average_decay: 0.0005
 seed: 1234
 report_every: 1
-train_steps: 300000
+train_steps: 200500
 valid_steps: 100000
 
 # Batching
