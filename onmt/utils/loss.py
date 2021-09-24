@@ -518,9 +518,9 @@ class ACLossCompute(LossComputeBase):
             policy_dist = std_attn.exp()
             gtruth = target.view(-1)
 
-            # reward_tensor = self._compute_reward(output[1:], target[1:], bleu_add_1)
+            reward_tensor = self._compute_reward(output[1:], target[1:], bleu_add_1)
 
-            reward_tensor = self.unsuper_reward.compute_reward(src, target[1:], output[1:], src.device.index)
+            # reward_tensor = self.unsuper_reward.compute_reward(src, target[1:], output[1:], src.device.index)
 
             if target_critic is not None:
                 with torch.no_grad():
