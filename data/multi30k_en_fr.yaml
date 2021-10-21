@@ -1,0 +1,22 @@
+# multi30k_en_fr.yaml
+save_data: multi30k-dataset
+
+## Where the vocab(s) will be written
+src_vocab: multi30k-dataset/data/task1/tok/en.vocab.src
+
+tgt_vocab: multi30k-dataset/data/task1/tok/fr.vocab.tgt
+# Prevent overwriting existing files in the folder
+overwrite: False
+
+# Corpus opts:
+data:
+    mult30k:
+        path_src: multi30k-dataset/data/task1/tok/train.lc.norm.tok.en
+        path_tgt: multi30k-dataset/data/task1/tok/train.lc.norm.tok.fr
+        transforms: []
+#        transforms: [sentencepiece]
+    valid:
+        path_src: multi30k-dataset/data/task1/tok/val.lc.norm.tok.en
+        path_tgt: multi30k-dataset/data/task1/tok/val.lc.norm.tok.fr
+        transforms: []
+#        transforms: [sentencepiece]
