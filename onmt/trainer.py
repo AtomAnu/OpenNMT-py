@@ -144,8 +144,6 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global
 
         # TODO Update this condition to match the class
 
-        actor_optim, critic_optim = optim
-
         policy_strategy, policy_topk_sampling, \
         policy_sampling_temperature, policy_topp_sampling = None, None, None, None
 
@@ -160,7 +158,7 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None, global
         else:
             model_saver = None
 
-        trainer = onmt.SyncACSETrainer(model, train_loss, valid_loss, actor_optim, critic_optim,
+        trainer = onmt.SyncACSETrainer(model, train_loss, valid_loss, optim,
                                      policy_strategy, policy_topk_sampling, policy_sampling_temperature,
                                      policy_topp_sampling, special_tok_mask,
                                      opt.use_target_network, opt.target_network_update_period,
