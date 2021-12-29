@@ -754,6 +754,9 @@ class ACSELossCompute(LossComputeBase):
                     align_head=align_head, ref_align=ref_align)
                 loss += align_loss
 
+            print('SRC Shape: {}'.format(src.shape))
+            print('TGT Shape: {}'.format(target.shape))
+
             Q_mod, Q_all = self.model.critic(src, enc_state, memory_bank, lengths, target, self.eos_idx)
 
             reward_tensor = self.unsuper_reward.compute_reward(src, target[1:], output[1:], src.device.index)
@@ -920,8 +923,6 @@ class ACSELossCompute(LossComputeBase):
         range_end = range_[1]
 
         if self.model.train_mode == TrainMode.ACTOR:
-
-            print(len(output))
 
             enc_state, memory_bank, lengths, dec_out = output
 
