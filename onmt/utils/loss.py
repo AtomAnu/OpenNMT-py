@@ -101,6 +101,20 @@ def build_loss_compute(model, tgt_field, opt, train=True, unsuper_reward=None):
                 unk_idx,
                 unsuper_reward=unsuper_reward
             )
+        elif opt.model_task == ModelTask.ACSE:
+            compute = ACSELossCompute(
+                criterion,
+                loss_gen,
+                model,
+                opt.discount_factor,
+                opt.multi_step,
+                opt.lambda_xent,
+                opt.lambda_var,
+                tgt_field.vocab,
+                eos_idx,
+                unk_idx,
+                unsuper_reward=unsuper_reward
+            )
         elif opt.model_task == ModelTask.A2C or opt.model_task == ModelTask.A3C:
             compute = A2CLossCompute(
                 criterion,
@@ -742,7 +756,7 @@ class ACSELossCompute(LossComputeBase):
     def __init__(self, criterion, generator, model, discount_factor, multi_step, lambda_xent,
                  lambda_var, tgt_vocab, eos_idx, unk_idx, unsuper_reward=None,
                  normalization="sents", lambda_coverage=0.0, lambda_align=0.0, tgt_shift_index=0):
-        super(ACLossCompute, self).__init__(criterion, generator)
+        super(ACSELossCompute, self).__init__(criterion, generator)
         self.lambda_coverage = lambda_coverage
         self.lambda_align = lambda_align
         self.tgt_shift_index = tgt_shift_index
