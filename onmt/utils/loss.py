@@ -763,7 +763,7 @@ class ACSELossCompute(LossComputeBase):
 
             stats = self._stats(loss.clone(), scores, gtruth)
 
-            return (loss, None), stats
+            return loss, stats
 
         else:
             """
