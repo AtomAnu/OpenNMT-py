@@ -248,7 +248,7 @@ def build_task_specific_model(model_opt, fields):
                   len(fields["tgt"].base_field.vocab)),
                   Cast(torch.float32))
 
-        critic = onmt.models.CriticQ(critic_decoder, critic_output_layer)
+        critic = onmt.models.CriticQSharedEnc(critic_decoder, critic_output_layer)
 
         return onmt.models.ACNMTModel(actor=actor, critic=critic,
                                       train_mode=model_opt.train_mode, tgt_field=fields["tgt"])
