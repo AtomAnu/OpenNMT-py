@@ -116,7 +116,7 @@ class Actor(nn.Module):
 
     def forward(self, src, tgt, lengths, bptt=False, with_align=False, train_mode=TrainMode.ACTOR, tgt_field=None,
                 policy_strategy=PolicyStrategy.Categorical, policy_topk_sampling=-1, policy_sampling_temperature=1,
-                policy_topp_sampling=-1, special_tok_mask=None, gen_seq=None):
+                policy_topp_sampling=-1, special_tok_mask=None, gen_seq=None, shared_enc=False):
 
         if train_mode == TrainMode.ACTOR or gen_seq is not None:
             enc_state, memory_bank, lengths = self.encoder(src, lengths)
@@ -133,11 +133,16 @@ class Actor(nn.Module):
                                           memory_lengths=lengths,
                                           with_align=with_align)
             if gen_seq is None:
-                return dec_out, attns
+                if shared_enc:
+                    return (enc_state, memory_bank, lengths, dec_out), attns
+                else:
+                    return dec_out, attns
             else:
                 # TODO add entropy for PPO
-
-                return self.generator(dec_out)
+                if shared_enc:
+                    return enc_state, memory_bank, lengths, self.generator(dec_out)
+                else:
+                    return self.generator(dec_out)
 
         elif train_mode == TrainMode.CRITIC:
             with torch.no_grad():
@@ -419,6 +424,69 @@ class CriticQ(nn.Module):
 
         return enc, dec, out_layer
 
+class CriticQSharedEnc(nn.Module):
+
+    def __init__(self, decoder, output_layer):
+        super(CriticQSharedEnc, self).__init__()
+        self.decoder = decoder
+        self.output_layer = output_layer
+
+    def forward(self, src, enc_state, memory_bank, lengths, gen_seq, eos_token, bptt=False, with_align=False):
+
+        output_mask = self._compute_output_mask(gen_seq, eos_token)
+
+        if not bptt:
+            self.decoder.init_state(src, memory_bank, enc_state)
+
+        dec_in = gen_seq.to(torch.int64)
+        dec_out, attns = self.decoder(dec_in, memory_bank,
+                                             memory_lengths=lengths,
+                                             with_align=with_align)
+
+        Q_all = self.output_layer(dec_out)
+
+        Q_mod = Q_all.gather(2, gen_seq.to(torch.int64))
+
+        return Q_mod * output_mask.to(torch.int64), Q_all * output_mask.to(torch.int64)
+
+    def _compute_output_mask(self, gen_seq, eos_token):
+
+        eos_idx = gen_seq.eq(eos_token).to(torch.int64)
+        value_range = torch.arange(gen_seq.shape[0], 0, -1).to('cuda')
+        output_multiplied = (eos_idx.transpose(0, 2) * value_range).transpose(0, 2)
+        first_eos_idx = torch.argmax(output_multiplied, 0, keepdim=True).view(-1)
+
+        output_mask = torch.ones(gen_seq.shape[0], gen_seq.shape[1], gen_seq.shape[2]).to('cuda')
+
+        for row in range(0, gen_seq.shape[1]):
+            output_mask[first_eos_idx[row]:, row] = 0
+
+        return output_mask.to(torch.bool)
+
+    def update_dropout(self, dropout):
+        self.decoder.update_dropout(dropout)
+
+    def count_parameters(self, log=print):
+        """Count number of parameters in model (& print with `log` callback).
+
+        Returns:
+            (int, int):
+            * encoder side parameter count
+            * decoder side parameter count
+        """
+
+        dec, out_layer = 0, 0
+        for name, param in self.named_parameters():
+            if 'decoder' in name:
+                dec += param.nelement()
+            else:
+                out_layer += param.nelement()
+        if callable(log):
+            log('critic decoder: {}'.format(dec))
+            log('critic output layer: {}'.format(out_layer))
+
+        return 0, dec, out_layer
+
 class CriticV(nn.Module):
 
     def __init__(self, encoder, decoder, output_layer):
@@ -595,6 +663,74 @@ class A2CNMTModel(BaseModel):
                           self.tgt_field, policy_strategy, policy_topk_sampling,
                           policy_sampling_temperature, policy_topp_sampling,
                           special_tok_mask, gen_seq)
+
+    def update_dropout(self, dropout):
+        self.actor.update_dropout(dropout)
+        self.critic.update_dropout(dropout)
+
+    def count_parameters(self, log=print):
+        """Count number of parameters in model (& print with `log` callback).
+
+        Returns:
+            (int, int):
+            * encoder side parameter count
+            * decoder side parameter count
+        """
+
+        actor_enc, actor_dec = self.actor.count_parameters(log)
+        critic_enc, critic_dec, critic_out_layer = self.critic.count_parameters(log)
+
+        total_actor = actor_enc + actor_dec
+        total_critic = critic_enc + critic_dec + critic_out_layer
+
+        log('* Actor: number of parameters: {}'.format(total_actor))
+        log('* Critic: number of parameters: {}'.format(total_critic))
+        log('* Total: number of parameters: {}'.format(total_actor + total_critic))
+
+        return total_actor, total_critic
+
+class ACNMTModelSharedEnc(BaseModel):
+    """
+    Core trainable object in OpenNMT. Implements a trainable interface
+    for a simple, generic encoder + decoder model.
+    Args:
+      encoder (onmt.encoders.EncoderBase): an encoder object
+      decoder (onmt.decoders.DecoderBase): a decoder object
+    """
+
+    def __init__(self, actor, critic, train_mode, tgt_field):
+        super(ACNMTModel, self).__init__(actor.encoder, actor.decoder)
+        self.actor = actor
+        # self.critic is only the decoder here
+        self.critic = critic
+        self.tgt_field = tgt_field
+        self.train_mode = train_mode
+
+    @property
+    def encoder(self):
+        return self.actor.encoder
+
+    @property
+    def decoder(self):
+        return self.actor.decoder
+
+    @property
+    def generator(self):
+        return self.actor.generator
+
+    def forward(self, src, tgt, lengths, bptt=False, with_align=False,
+                policy_strategy=PolicyStrategy.Categorical,
+                policy_topk_sampling=-1,
+                policy_sampling_temperature=1,
+                policy_topp_sampling=-1,
+                special_tok_mask=None,
+                gen_seq=None,
+                shared_enc=True):
+
+        return self.actor(src, tgt, lengths, bptt, with_align, self.train_mode,
+                          self.tgt_field, policy_strategy, policy_topk_sampling,
+                          policy_sampling_temperature, policy_topp_sampling,
+                          special_tok_mask, gen_seq, shared_enc=shared_enc)
 
     def update_dropout(self, dropout):
         self.actor.update_dropout(dropout)

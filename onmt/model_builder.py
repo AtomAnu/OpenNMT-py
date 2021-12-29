@@ -225,6 +225,33 @@ def build_task_specific_model(model_opt, fields):
 
         return onmt.models.A2CNMTModel(actor=actor, critic=critic,
                                        train_mode=model_opt.train_mode, tgt_field=fields["tgt"])
+    elif model_opt.model_task == ModelTask.ACSE:
+        logger.info('Building the ACSE NMT model...')
+        actor_encoder, src_emb = build_encoder_with_embeddings(model_opt, fields)
+        actor_decoder, _ = build_decoder_with_embeddings(
+            model_opt,
+            fields,
+            share_embeddings=model_opt.share_embeddings,
+            src_emb=src_emb,
+        )
+
+        actor = onmt.models.Actor(actor_encoder, actor_decoder)
+
+        critic_decoder, _ = build_decoder_with_embeddings(
+            model_opt,
+            fields,
+            share_embeddings=model_opt.share_embeddings,
+            src_emb=src_emb,
+        )
+        critic_output_layer = nn.Sequential(
+        nn.Linear(model_opt.dec_rnn_size,
+                  len(fields["tgt"].base_field.vocab)),
+                  Cast(torch.float32))
+
+        critic = onmt.models.CriticQ(critic_decoder, critic_output_layer)
+
+        return onmt.models.ACNMTModel(actor=actor, critic=critic,
+                                      train_mode=model_opt.train_mode, tgt_field=fields["tgt"])
     else:
         raise ValueError(f"No model defined for {model_opt.model_task} task")
 

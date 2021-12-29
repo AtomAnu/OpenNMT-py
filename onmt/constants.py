@@ -28,9 +28,11 @@ class ModelTask(object):
     LANGUAGE_MODEL = 'lm'
     SEQ2SEQ = 'seq2seq'
     AC = 'ac'
+    ACSE = 'acse'
     A2C = 'a2c'
     A3C = 'a3c'
     PPO = 'ppo'
+
 
 class TrainMode:
     ACTOR = 'actor'
