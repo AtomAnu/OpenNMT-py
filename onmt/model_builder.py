@@ -250,7 +250,7 @@ def build_task_specific_model(model_opt, fields):
 
         critic = onmt.models.CriticQSharedEnc(critic_decoder, critic_output_layer)
 
-        return onmt.models.ACNMTModel(actor=actor, critic=critic,
+        return onmt.models.ACNMTModelSharedEnc(actor=actor, critic=critic,
                                       train_mode=model_opt.train_mode, tgt_field=fields["tgt"])
     else:
         raise ValueError(f"No model defined for {model_opt.model_task} task")
@@ -399,7 +399,7 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
         model.load_state_dict(checkpoint['model'], strict=False)
         generator.load_state_dict(checkpoint['generator'], strict=False)
 
-    if model_opt.model_task not in [ModelTask.AC, ModelTask.A2C, ModelTask.A3C, ModelTask.PPO]:
+    if model_opt.model_task not in [ModelTask.AC, ModelTask.A2C, ModelTask.A3C, ModelTask.PPO, ModelTask.ACSE]:
         model.generator = generator
     else:
         model.actor.generator = generator
