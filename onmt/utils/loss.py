@@ -733,6 +733,8 @@ class ACSELossCompute(LossComputeBase):
 
         if self.model.train_mode == TrainMode.ACTOR:
 
+            print('ACTOR Pretraining')
+
             bottled_output = self._bottle(output)
 
             scores = self.generator(bottled_output)
@@ -753,6 +755,8 @@ class ACSELossCompute(LossComputeBase):
                 loss += align_loss
 
             Q_mod, Q_all = self.model.critic(src, enc_state, memory_bank, lengths, target, self.eos_idx)
+
+            reward_tensor = self.unsuper_reward.compute_reward(src, target[1:], output[1:], src.device.index)
 
             stats = self._stats(loss.clone(), scores, gtruth)
 

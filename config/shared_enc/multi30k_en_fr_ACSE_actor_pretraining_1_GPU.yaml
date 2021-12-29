@@ -61,7 +61,7 @@ param_init_glorot: true
 normalization: "tokens"
 
 # Model
-model_task: ac
+model_task: acse
 train_mode: actor
 policy_strategy: [categorical, categorical, categorical]
 policy_topk_sampling: [-1,-1,-1]
