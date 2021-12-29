@@ -1430,6 +1430,8 @@ class SyncACSETrainer(object):
                         src=src)
 
                 try:
+                    loss, _ = loss
+
                     if loss is not None:
                         self.optim.backward(loss)
 
