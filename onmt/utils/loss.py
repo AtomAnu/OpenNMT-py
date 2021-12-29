@@ -921,6 +921,8 @@ class ACSELossCompute(LossComputeBase):
 
         if self.model.train_mode == TrainMode.ACTOR:
 
+            print(len(output))
+
             enc_state, memory_bank, lengths, dec_out = output
 
             shard_state = {
