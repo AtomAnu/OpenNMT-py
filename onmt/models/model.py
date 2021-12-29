@@ -699,7 +699,7 @@ class ACNMTModelSharedEnc(BaseModel):
     """
 
     def __init__(self, actor, critic, train_mode, tgt_field):
-        super(ACNMTModel, self).__init__(actor.encoder, actor.decoder)
+        super(ACNMTModelSharedEnc, self).__init__(actor.encoder, actor.decoder)
         self.actor = actor
         # self.critic is only the decoder here
         self.critic = critic
