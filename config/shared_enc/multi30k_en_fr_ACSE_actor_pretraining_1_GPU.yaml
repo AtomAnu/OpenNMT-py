@@ -24,7 +24,7 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/multi30k-models/actor_pretraining/acq-4gpu-multi30k/model
+save_model: data/multi30k-models/actor_pretraining/acse-1gpu-multi30k/model
 keep_checkpoint: 50
 save_checkpoint_steps: 10000
 average_decay: 0.0005
