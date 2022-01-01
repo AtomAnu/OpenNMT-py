@@ -757,7 +757,8 @@ class ACSELossCompute(LossComputeBase):
             # print('SRC Shape: {}'.format(src.shape))
             # print('TGT Shape: {}'.format(target.shape))
 
-            policy_dist = self._unbottle(scores, output.shape[1]).exp()
+            # policy_dist = self._unbottle(scores, output.shape[1]).exp()
+            policy_dist = self.generator(output).exp()
 
             Q_mod, Q_all = self.model.critic(src, enc_state, memory_bank, lengths, target.unsqueeze(2), self.eos_idx)
 
