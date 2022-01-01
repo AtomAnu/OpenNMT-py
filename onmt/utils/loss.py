@@ -754,6 +754,9 @@ class ACSELossCompute(LossComputeBase):
                     align_head=align_head, ref_align=ref_align)
                 loss += align_loss
 
+            loss_unbottle = self._unbottle(loss, output.shape[1])
+
+
             # print('SRC Shape: {}'.format(src.shape))
             # print('TGT Shape: {}'.format(target.shape))
 
@@ -768,6 +771,7 @@ class ACSELossCompute(LossComputeBase):
                     target_Q_mod, target_Q_all = target_critic(src, enc_state, memory_bank, lengths, target.unsqueeze(2), self.eos_idx)
                 critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + self.discount_factor * (policy_dist[1:].detach() * target_Q_all[1:]).sum(2).unsqueeze(2)))**2)
             else:
+                print('Loss Shape: {}'.format(loss_unbottle.shape))
                 print('Q Mod: {}'.format(Q_mod[:-1].shape))
                 print('Reward: {}'.format(reward_tensor.shape))
                 print('Policy: {}'.format(policy_dist[1:].shape))
