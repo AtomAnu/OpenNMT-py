@@ -757,8 +757,8 @@ class ACSELossCompute(LossComputeBase):
             # print('SRC Shape: {}'.format(src.shape))
             # print('TGT Shape: {}'.format(target.shape))
 
-            # policy_dist = self._unbottle(scores, output.shape[1]).exp()
-            policy_dist = self.generator(output).exp()
+            policy_dist = self._unbottle(scores, output.shape[1]).exp()
+            # policy_dist = self.generator(output).exp()
 
             Q_mod, Q_all = self.model.critic(src, enc_state, memory_bank, lengths, target.unsqueeze(2), self.eos_idx)
 
@@ -767,7 +767,7 @@ class ACSELossCompute(LossComputeBase):
             if target_critic is not None:
                 with torch.no_grad():
                     target_Q_mod, target_Q_all = target_critic(src, enc_state, memory_bank, lengths, target.unsqueeze(2), self.eos_idx)
-                critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + self.discount_factor * (policy_dist[1:].detach() * target_Q_all[1:]).sum(2).unsqueeze(2)))**2)
+                critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + self.discount_factor * (policy_dist.detach() * target_Q_all[1:]).sum(2).unsqueeze(2)))**2)
             else:
 
                 print('Score shape: {}'.format(self.generator(output).exp().shape))
@@ -775,10 +775,10 @@ class ACSELossCompute(LossComputeBase):
                 print('Loss Shape: {}'.format(loss))
                 print('Q Mod: {}'.format(Q_mod[:-1].shape))
                 print('Reward: {}'.format(reward_tensor.shape))
-                print('Policy: {}'.format(policy_dist[1:].shape))
+                print('Policy: {}'.format(policy_dist.shape))
                 print('Q All: {}'.format(Q_all[1:].shape))
 
-                critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + self.discount_factor * (policy_dist[1:].detach() * Q_all[1:]).sum(2).unsqueeze(2))) ** 2)
+                critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + self.discount_factor * (policy_dist.detach() * Q_all[1:]).sum(2).unsqueeze(2))) ** 2)
 
             var_reduction_term = (Q_all[:-1] - (1/len(self.tgt_vocab)) * Q_all[:-1].sum(2).unsqueeze(2)).sum(2).unsqueeze(2)
 
