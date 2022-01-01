@@ -238,8 +238,8 @@ class UnsuperReward():
     def _compute_sentence_level_semantic_similarity(self, src_list, sent_list):
 
         with torch.no_grad():
-            src_emb = self.sentence_transformer.encode(src_list , convert_to_tensor=True, device=self.device)
-            sent_emb = self.sentence_transformer.encode(sent_list , convert_to_tensor=True, device=self.device)
+            src_emb = self.sentence_transformer.encode(src_list , convert_to_tensor=True, device=self.device, show_progress_bar=False)
+            sent_emb = self.sentence_transformer.encode(sent_list , convert_to_tensor=True, device=self.device, show_progress_bar=False)
             cosine_similarity = self.cos_sim(sent_emb, src_emb)
 
         if self.normalise:
