@@ -784,7 +784,7 @@ class ACSELossCompute(LossComputeBase):
 
             critic_loss = (critic_main_loss + self.lambda_var * var_reduction_term).sum((0,1))
 
-            loss += critic_loss
+            loss = loss + critic_loss
 
             stats = self._stats(loss.clone(), scores, gtruth)
 
