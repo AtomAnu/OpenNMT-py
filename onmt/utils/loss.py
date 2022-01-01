@@ -759,7 +759,7 @@ class ACSELossCompute(LossComputeBase):
 
             policy_dist = self._unbottle(scores, output.shape[1]).exp()
 
-            Q_mod, Q_all = self.model.critic(src, enc_state, memory_bank, lengths, target[1:].unsqueeze(2), self.eos_idx)
+            Q_mod, Q_all = self.model.critic(src, enc_state, memory_bank, lengths, target.unsqueeze(2), self.eos_idx)
 
             reward_tensor = self.unsuper_reward.compute_reward(src, target[1:], target[1:], src.device.index)
 
@@ -768,6 +768,8 @@ class ACSELossCompute(LossComputeBase):
                     target_Q_mod, target_Q_all = target_critic(src, enc_state, memory_bank, lengths, target.unsqueeze(2), self.eos_idx)
                 critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + self.discount_factor * (policy_dist[1:].detach() * target_Q_all[1:]).sum(2).unsqueeze(2)))**2)
             else:
+
+                print('Score shape: {}'.format(self.generator(output).shape))
                 print('Output Shape: {}'.format(output.shape))
                 print('Loss Shape: {}'.format(loss))
                 print('Q Mod: {}'.format(Q_mod[:-1].shape))
