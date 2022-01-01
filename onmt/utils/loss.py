@@ -769,7 +769,7 @@ class ACSELossCompute(LossComputeBase):
                 critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + self.discount_factor * (policy_dist[1:].detach() * target_Q_all[1:]).sum(2).unsqueeze(2)))**2)
             else:
 
-                print('Score shape: {}'.format(self.generator(output).shape))
+                print('Score shape: {}'.format(self.generator(output).exp().shape))
                 print('Output Shape: {}'.format(output.shape))
                 print('Loss Shape: {}'.format(loss))
                 print('Q Mod: {}'.format(Q_mod[:-1].shape))
