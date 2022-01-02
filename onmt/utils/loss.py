@@ -763,7 +763,7 @@ class ACSELossCompute(LossComputeBase):
             Q_mod, Q_all = self.model.critic(src, enc_state, memory_bank, lengths, target.unsqueeze(2), self.eos_idx)
 
             if self.unsuper_reward is None:
-                reward_tensor = self._compute_reward(output[1:], target[1:], bleu_add_1)
+                reward_tensor = self._compute_reward(target[1:], target[1:], bleu_add_1)
             else:
                 reward_tensor = self.unsuper_reward.compute_reward(src, target[1:], output[1:], src.device.index)
 
