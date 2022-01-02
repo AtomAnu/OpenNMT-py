@@ -139,27 +139,28 @@ class Actor(nn.Module):
                     return dec_out, attns
             else:
                 # TODO add entropy for PPO
-                if shared_enc:
-                    return enc_state, memory_bank, lengths, self.generator(dec_out)
-                else:
-                    return self.generator(dec_out)
+                return self.generator(dec_out)
 
         elif train_mode == TrainMode.CRITIC:
             with torch.no_grad():
-                return self._step_wise_forward(src, tgt, lengths, bptt, with_align,
+                output, log_policy_dist = self._step_wise_forward(src, tgt, lengths, bptt, with_align,
                                                tgt_field, policy_strategy,
                                                policy_topk_sampling, policy_sampling_temperature,
-                                               policy_topp_sampling, special_tok_mask)
+                                               policy_topp_sampling, special_tok_mask, shared_enc)
+                return output, log_policy_dist
         else:
             with torch.enable_grad():
-                return self._step_wise_forward(src, tgt, lengths, bptt, with_align,
+                output, log_policy_dist = self._step_wise_forward(src, tgt, lengths, bptt, with_align,
                                                tgt_field, policy_strategy,
                                                policy_topk_sampling, policy_sampling_temperature,
-                                               policy_topp_sampling, special_tok_mask)
+                                               policy_topp_sampling, special_tok_mask, shared_enc)
+
+                return output, log_policy_dist
 
     def _step_wise_forward(self, src, tgt, lengths, bptt=False, with_align=False, tgt_field=None,
                            policy_strategy=PolicyStrategy.Categorical, policy_topk_sampling=-1,
-                           policy_sampling_temperature=1, policy_topp_sampling=-1, special_tok_mask=None):
+                           policy_sampling_temperature=1, policy_topp_sampling=-1, special_tok_mask=None,
+                           shared_enc=False):
 
         enc_state, memory_bank, lengths = self.encoder(src, lengths)
 
@@ -193,7 +194,10 @@ class Actor(nn.Module):
         # gen_seq = gen_seq * gen_seq_mask.to(torch.int64) + (~gen_seq_mask).to(torch.int64)
         # log_policy_dist = log_policy_dist * policy_mask.to(torch.int64) + (~policy_mask).to(torch.int64)
 
-        return gen_seq, log_policy_dist
+        if shared_enc:
+            return (enc_state, memory_bank, lengths, gen_seq), log_policy_dist
+        else:
+            return gen_seq, log_policy_dist
 
     def _choose_tok(self, logits, policy_strategy=PolicyStrategy.Categorical,
                     policy_topk_sampling = -1, policy_sampling_temperature = 1, policy_topp_sampling = -1):

@@ -282,6 +282,12 @@ def model_opts(parser):
         default=1,
         help="Value of n for multi-step return (1 for using only the immediate reward)")
     group.add(
+        "-unsuper_reward",
+        "--unsuper_reward",
+        action="store_true",
+        help="Specify to use the Unsupervised Reward instead of the BLEU reward"
+    )
+    group.add(
         "-w_fluency",
         "--w_fluency",
         type=float,

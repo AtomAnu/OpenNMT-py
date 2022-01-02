@@ -762,7 +762,10 @@ class ACSELossCompute(LossComputeBase):
 
             Q_mod, Q_all = self.model.critic(src, enc_state, memory_bank, lengths, target.unsqueeze(2), self.eos_idx)
 
-            reward_tensor = self.unsuper_reward.compute_reward(src, target[1:], target[1:], src.device.index)
+            if self.unsuper_reward is None:
+                reward_tensor = self._compute_reward(output[1:], target[1:], bleu_add_1)
+            else:
+                reward_tensor = self.unsuper_reward.compute_reward(src, target[1:], output[1:], src.device.index)
 
             if target_critic is not None:
                 with torch.no_grad():
@@ -770,13 +773,14 @@ class ACSELossCompute(LossComputeBase):
                 critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + self.discount_factor * (policy_dist.detach() * target_Q_all[1:]).sum(2).unsqueeze(2)))**2)
             else:
 
-                print('Score shape: {}'.format(self.generator(output).exp().shape))
-                print('Output Shape: {}'.format(output.shape))
-                print('Loss Shape: {}'.format(loss))
-                print('Q Mod: {}'.format(Q_mod[:-1].shape))
-                print('Reward: {}'.format(reward_tensor.shape))
-                print('Policy: {}'.format(policy_dist.shape))
-                print('Q All: {}'.format(Q_all[1:].shape))
+                # TODO Remove the print statements
+                # print('Score shape: {}'.format(self.generator(output).exp().shape))
+                # print('Output Shape: {}'.format(output.shape))
+                # print('Loss Shape: {}'.format(loss))
+                # print('Q Mod: {}'.format(Q_mod[:-1].shape))
+                # print('Reward: {}'.format(reward_tensor.shape))
+                # print('Policy: {}'.format(policy_dist.shape))
+                # print('Q All: {}'.format(Q_all[1:].shape))
 
                 critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + self.discount_factor * (policy_dist.detach() * Q_all[1:]).sum(2).unsqueeze(2))) ** 2)
 
@@ -797,19 +801,20 @@ class ACSELossCompute(LossComputeBase):
             reward_tensor.shape: [gen_seq_len x batch_size x 1]
             """
 
-            Q_mod, Q_all = self.model.critic(target, output, self.eos_idx)
+            Q_mod, Q_all = self.model.critic(src, enc_state, memory_bank, lengths, target.unsqueeze(2), self.eos_idx)
 
             scores = self._bottle(std_attn)
             policy_dist = std_attn.exp()
             gtruth = target.view(-1)
 
-            # reward_tensor = self._compute_reward(output[1:], target[1:], bleu_add_1)
-
-            reward_tensor = self.unsuper_reward.compute_reward(src, target[1:], output[1:], src.device.index)
+            if self.unsuper_reward is None:
+                reward_tensor = self._compute_reward(output[1:], target[1:], bleu_add_1)
+            else:
+                reward_tensor = self.unsuper_reward.compute_reward(src, target[1:], output[1:], src.device.index)
 
             if target_critic is not None:
                 with torch.no_grad():
-                    target_Q_mod, target_Q_all = target_critic(target, output, self.eos_idx)
+                    target_Q_mod, target_Q_all = target_critic(src, enc_state, memory_bank, lengths, target.unsqueeze(2), self.eos_idx)
                 critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + self.discount_factor * (policy_dist[1:].detach() * target_Q_all[1:]).sum(2).unsqueeze(2)))**2)
             else:
                 critic_main_loss = ((Q_mod[:-1] - (reward_tensor.detach() + self.discount_factor * (policy_dist[1:].detach() * Q_all[1:]).sum(2).unsqueeze(2))) ** 2)
@@ -820,22 +825,24 @@ class ACSELossCompute(LossComputeBase):
 
             # critic_loss = critic_main_loss.sum((0,1))
 
-            if self.model.train_mode == TrainMode.CRITIC:
+            # if self.model.train_mode == TrainMode.CRITIC:
+            #
+            #     stats = self._stats(critic_loss.clone(), scores, gtruth)
+            #
+            #     return (None, critic_loss), stats
+            # else:
 
-                stats = self._stats(critic_loss.clone(), scores, gtruth)
+            xent_loss = self.criterion(scores, gtruth)
 
-                return (None, critic_loss), stats
-            else:
+            policy_loss = -(policy_dist[:-1] * Q_all[:-1].detach()).sum()
 
-                xent_loss = self.criterion(scores, gtruth)
+            actor_loss = policy_loss + self.lambda_xent * xent_loss
 
-                policy_loss = -(policy_dist[:-1] * Q_all[:-1].detach()).sum()
+            loss = actor_loss + critic_loss
 
-                actor_loss = policy_loss + self.lambda_xent * xent_loss
+            stats = self._stats(loss.clone(), scores, gtruth)
 
-                stats = self._stats(actor_loss.clone(), scores, gtruth)
-
-                return (actor_loss, critic_loss), stats
+            return (loss, None), stats
 
     def _compute_reward(self, output, target, reward_function):
 
@@ -959,10 +966,16 @@ class ACSELossCompute(LossComputeBase):
                 "lengths": lengths,
             }
         else:
+
+            enc_state, memory_bank, lengths, gen_seq = output
+
             shard_state = {
-                "output": output[range_start:range_end, :],
+                "output": gen_seq[range_start:range_end, :],
                 "target": batch.tgt[range_start:range_end, :, 0],
                 "std_attn": attns[range_start:range_end, :, :],
+                "enc_state": enc_state,
+                "memory_bank": memory_bank,
+                "lengths": lengths,
             }
 
         if src is not None:

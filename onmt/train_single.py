@@ -88,8 +88,10 @@ def main(opt, fields, transforms_cls, checkpoint, device_id,
     # Build model saver
     model_saver = build_model_saver(model_opt, opt, model, fields, optim)
 
+    print('Using Unsuper Reward: {}'.format(opt.unsuper_reward))
+
     unsuper_reward = None
-    if opt.train_mode != TrainMode.ACTOR or model_opt.model_task == ModelTask.ACSE:
+    if opt.unsuper_reward and opt.train_mode != TrainMode.ACTOR or model_opt.model_task == ModelTask.ACSE:
         unsuper_reward = UnsuperReward(fields, opt.w_fluency, opt.w_tlss,
                                        opt.w_slss, device_id, opt.norm_unsuper_reward)
 
