@@ -24,8 +24,8 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/OpenSubtitles-v2016/joint_training/a2c-1gpu/model
-train_from: data/OpenSubtitles-v2016/critic_pretraining/a2c-1gpu/model_step_200.pt
+save_model: data/OpenSubtitles-v2016/joint_training/a2c-bleu-1gpu/model
+train_from: data/OpenSubtitles-v2016/critic_pretraining/a2c-bleu-1gpu/model_step_100.pt
 reset_optim: "all"
 keep_checkpoint: 50
 save_checkpoint_steps: 100
@@ -43,8 +43,8 @@ world_size: 1
 gpu_ranks: [0]
 device_id: 2
 batch_type: "tokens"
-batch_size: 2000
-valid_batch_size: 2000
+batch_size: 1000
+valid_batch_size: 1000
 batch_size_multiple: 1
 max_generator_batches: 0
 accum_count: [3]
@@ -71,8 +71,8 @@ critic_learning_rate: 0.00001
 model_task: a2c
 train_mode: ac
 policy_strategy: [categorical, categorical, categorical]
-policy_topk_sampling: [100,-1,-1]
-policy_sampling_temperature: [1.0,0.9,0.7]
+policy_topk_sampling: [100,200,500]
+policy_sampling_temperature: [1.0,1.0,1.0]
 policy_topp_sampling: [-1,-1,-1]
 discount_factor: 0.5
 multi_step: 5
