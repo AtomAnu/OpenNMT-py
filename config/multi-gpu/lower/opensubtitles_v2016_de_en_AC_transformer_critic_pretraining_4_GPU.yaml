@@ -24,7 +24,7 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/OpenSubtitles-v2016/critic_pretraining/ac-4gpu-lower/model
+save_model: data/OpenSubtitles-v2016/critic_pretraining/ac-async-bleu-4gpu-lower/model
 train_from: data/OpenSubtitles-v2016/actor_pretraining/ac-4gpu-lower/model_step_30000.pt
 #reset_optim: "all"
 keep_checkpoint: 50
@@ -39,10 +39,10 @@ valid_steps: 1000
 queue_size: 1024
 bucket_size: 32768
 pool_factor: 8192
-world_size: 1
-gpu_ranks: [0]
-#world_size: 4
-#gpu_ranks: [0,1,2,3]
+#world_size: 1
+#gpu_ranks: [0]
+world_size: 3
+gpu_ranks: [0,1,2]
 batch_type: "tokens"
 batch_size: 4096
 valid_batch_size: 4096
@@ -68,6 +68,7 @@ normalization: "tokens"
 # Model
 model_task: ac
 train_mode: critic
+async: true
 policy_strategy: [categorical, categorical, categorical]
 policy_topk_sampling: [-1,-1,-1]
 policy_sampling_temperature: [1.0,0.9,0.7]
