@@ -24,8 +24,8 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/OpenSubtitles-v2016/joint_training/a3c-4gpu-lower/model
-train_from: data/OpenSubtitles-v2016/actor_pretraining/a2c-4gpu/model_step_30000.pt
+save_model: data/OpenSubtitles-v2016/joint_training/a3c-bleu-4gpu-lower/model
+train_from: data/OpenSubtitles-v2016/critic_pretraining/a3c-bleu-lower/model_step_100.pt
 reset_optim: "all"
 keep_checkpoint: 50
 save_checkpoint_steps: 100
