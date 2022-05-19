@@ -9,9 +9,10 @@ from math import sqrt
 import types
 import importlib
 from onmt.utils.misc import fn_args
+from onmt.constants import ModelTask, TrainMode
 
 
-def build_torch_optimizer(model, opt):
+def build_torch_optimizer(model, opt, ac_optim_opt=None):
     """Builds the PyTorch optimizer.
 
     We use the default parameters for Adam that are suggested by
@@ -50,11 +51,33 @@ def build_torch_optimizer(model, opt):
             enable_factorization=True,
             weight_decay=0)
     elif opt.optim == 'adam':
+
+        if ac_optim_opt is None or opt.train_mode == TrainMode.ACTOR:
+            lr = opt.learning_rate
+        elif ac_optim_opt == 'actor':
+            lr = opt.actor_learning_rate
+        elif ac_optim_opt == 'critic':
+            lr = opt.critic_learning_rate
+
         optimizer = optim.Adam(
             params,
-            lr=opt.learning_rate,
+            lr=lr,
             betas=betas,
             eps=1e-9)
+
+    elif opt.optim == 'sharedadam':
+
+        if ac_optim_opt is None or opt.train_mode == TrainMode.ACTOR:
+            lr = opt.learning_rate
+        elif ac_optim_opt == 'actor':
+            lr = opt.actor_learning_rate
+        elif ac_optim_opt == 'critic':
+            lr = opt.critic_learning_rate
+
+        optimizer = SharedAdam(
+                    params,
+                    lr=lr,
+                    betas=betas)
     elif opt.optim == 'sparseadam':
         dense = []
         sparse = []
@@ -228,7 +251,7 @@ class Optimizer(object):
         self._scaler = None
 
     @classmethod
-    def from_opt(cls, model, opt, checkpoint=None):
+    def from_opt(cls, model, opt, checkpoint=None, ac_optim_opt=None):
         """Builds the optimizer from options.
 
         Args:
@@ -236,6 +259,8 @@ class Optimizer(object):
           model: The model to optimize.
           opt: The dict of user options.
           checkpoint: An optional checkpoint to load states from.
+          ac_optim_opt: An optional option for specifying whether to create an optimiser
+                        for the actor or the critic (** to be specified only when using checkpoint)
 
         Returns:
           An ``Optimizer`` instance.
@@ -244,7 +269,12 @@ class Optimizer(object):
         optim_state_dict = None
 
         if opt.train_from and checkpoint is not None:
-            optim = checkpoint['optim']
+            if ac_optim_opt == None:
+                optim = checkpoint['optim']
+            elif ac_optim_opt == 'actor':
+                optim = checkpoint['actor_optim']
+            elif ac_optim_opt == 'critic':
+                optim = checkpoint['critic_optim']
             ckpt_opt = checkpoint['opt']
             ckpt_state_dict = {}
             if isinstance(optim, Optimizer):  # Backward compatibility.
@@ -270,9 +300,21 @@ class Optimizer(object):
                 # Reset options, keep optimizer.
                 optim_state_dict = ckpt_state_dict
 
+        # # Debugging
+        # if opt.model_task == ModelTask.AC and opt.async:
+        #     optim_opt = opt
+        #     optim_state_dict = None
+
+        if ac_optim_opt is None or opt.train_mode == TrainMode.ACTOR:
+            lr = opt.learning_rate
+        elif ac_optim_opt == 'actor':
+            lr = opt.actor_learning_rate
+        elif ac_optim_opt == 'critic':
+            lr = opt.critic_learning_rate
+
         optimizer = cls(
-            build_torch_optimizer(model, optim_opt),
-            optim_opt.learning_rate,
+            build_torch_optimizer(model, optim_opt, ac_optim_opt),
+            learning_rate=lr,
             learning_rate_decay_fn=make_learning_rate_decay_fn(optim_opt),
             max_grad_norm=optim_opt.max_grad_norm)
         if opt.model_dtype == "fp16":
@@ -541,6 +583,35 @@ class AdaFactor(torch.optim.Optimizer):
 
         return loss
 
+class SharedAdam(torch.optim.Adam):
+
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-9, weight_decay=0):
+        super(SharedAdam, self).__init__(params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+
+        for group in self.param_groups:
+            for p in group['params']:
+                state = self.state[p]
+                state['step'] = 0
+                state['exp_avg'] = torch.zeros_like(p.data)
+                state['exp_avg_sq'] = torch.zeros_like(p.data)
+
+                state['exp_avg'].share_memory_()
+                state['exp_avg_sq'].share_memory_()
+
+    # def load_state(self, state_dict):
+    #
+    #     self.load_state_dict(state_dict)
+    #
+    #     for group in self.param_groups:
+    #         for p in group['params']:
+    #             state = self.state[p]
+    #             if len(state) == 0:
+    #                 state['step'] = 0
+    #                 state['exp_avg'] = torch.zeros_like(p.data)
+    #                 state['exp_avg_sq'] = torch.zeros_like(p.data)
+    #
+    #             state['exp_avg'].share_memory_()
+    #             state['exp_avg_sq'].share_memory_()
 
 class FusedAdam(torch.optim.Optimizer):
 

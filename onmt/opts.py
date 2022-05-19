@@ -3,7 +3,7 @@ import configargparse
 
 from onmt.models.sru import CheckSRU
 from onmt.transforms import AVAILABLE_TRANSFORMS
-from onmt.constants import ModelTask
+from onmt.constants import ModelTask, TrainMode, PolicyStrategy
 from onmt.modules.position_ffn import ACTIVATION_FUNCTIONS
 from onmt.modules.position_ffn import ActivationFunction
 
@@ -251,9 +251,157 @@ def model_opts(parser):
         "-model_task",
         "--model_task",
         default=ModelTask.SEQ2SEQ,
-        choices=[ModelTask.SEQ2SEQ, ModelTask.LANGUAGE_MODEL],
-        help="Type of task for the model either seq2seq or lm",
+        choices=[ModelTask.SEQ2SEQ, ModelTask.LANGUAGE_MODEL, ModelTask.AC, ModelTask.A2C, ModelTask.A3C, ModelTask.PPO, ModelTask.ACSE],
+        help="Type of task for the model (seq2seq, lm, ac, a2c or a3c)",
     )
+
+    # Training Mode and Hyperparameter Options (Specific to Actor-Critic Models)
+    group = parser.add_argument_group("Model- Actor-Critic Model Options")
+    group.add(
+        "-train_mode",
+        "--train_mode",
+        default=TrainMode.ACTOR,
+        choices=[TrainMode.ACTOR, TrainMode.CRITIC, TrainMode.AC],
+        help="Pre-training/Training mode for Actor-Critic models (actor, critic or ac)")
+    group.add(
+        "-async",
+        "--async",
+        type=bool,
+        default=False,
+        help="Specify whether to enable asynchronous training (default is synchronous training)")
+    group.add(
+        "-discount_factor",
+        "--discount_factor",
+        type=float,
+        default=1.0,
+        help="Discount factor used in return calculation (0 - 1)")
+    group.add(
+        "-multi_step",
+        "--multi_step",
+        type=int,
+        default=1,
+        help="Value of n for multi-step return (1 for using only the immediate reward)")
+    group.add(
+        "-unsuper_reward",
+        "--unsuper_reward",
+        action="store_true",
+        help="Specify to use the Unsupervised Reward instead of the BLEU reward"
+    )
+    group.add(
+        "-w_fluency",
+        "--w_fluency",
+        type=float,
+        default=1.0,
+        help="[For Unsupervised Reward Function] Fluency weight")
+    group.add(
+        "-w_tlss",
+        "--w_tlss",
+        type=float,
+        default=1.0,
+        help="[For Unsupervised Reward Function] Token-level Semantic Similarity weight")
+    group.add(
+        "-w_slss",
+        "--w_slss",
+        type=float,
+        default=1.0,
+        help="[For Unsupervised Reward Function] Sentence-level Semantic Similarity weight")
+    group.add(
+        "-norm_unsuper_reward",
+        "--norm_unsuper_reward",
+        type=bool,
+        default=True,
+        help="[For Unsupervised Reward Function] Specify whether to normalise each term in the reward")
+    group.add(
+        "-policy_strategy",
+        "--policy_strategy",
+        type=str,
+        default=[PolicyStrategy.Categorical],
+        nargs="+",
+        choices=[PolicyStrategy.Categorical, PolicyStrategy.Epsilon, PolicyStrategy.Greedy],
+        help="Choose the policy sampling strategy (categorical, epsilon or greedy)")
+    group.add(
+        "-policy_topk_sampling",
+        "--policy_topk_sampling",
+        type=int,
+        default=[-1],
+        nargs="+",
+        help="Value of k for top-k sampling (-1 to do sampling from the full distribution)")
+    group.add(
+        "-policy_sampling_temperature",
+        "--policy_sampling_temperature",
+        type=float,
+        default=[1.0],
+        nargs="+",
+        help="Value of temperature for policy sampling (1 for no temperature effect)")
+    group.add(
+        "-policy_topp_sampling",
+        "--policy_topp_sampling",
+        type=float,
+        default=[-1.],
+        nargs="+",
+        help="Value of p for nucleus sampling (-1 to do sampling from the full distribution)")
+    group.add(
+        "-epsilon",
+        "--epsilon",
+        type=float,
+        default=0.0,
+        help="Starting epsilon value for the epsilon-greedy policy (0 - 1)")
+    group.add(
+        "-epsilon_decay",
+        "--epsilon_decay",
+        type=float,
+        default=1.0,
+        help="Epsilon decay rate per step")
+    group.add(
+        "-lambda_xent",
+        "--lambda_xent",
+        type=float,
+        default=1.0,
+        help="Weight of cross-entropy loss in the actor loss during joint training")
+    group.add(
+        "-lambda_var",
+        "--lambda_var",
+        type=float,
+        default=1.0,
+        help="Weight of variance reduction term in the critic loss")
+    group.add(
+        "-use_target_network",
+        "--use_target_network",
+        type=bool,
+        default=False,
+        help="Specify whether to use a target critic network")
+    group.add(
+        "-target_network_update_period",
+        "--target_network_update_period",
+        type=int,
+        default=500,
+        help="Update period of the target network, if used")
+    group.add(
+        "-actor_learning_rate",
+        "--actor_learning_rate",
+        type=float,
+        default=0.0001,
+        help="Actor optimizer learning rate")
+    group.add(
+        "-critic_learning_rate",
+        "--critic_learning_rate",
+        type=float,
+        default=0.0001,
+        help="Critic optimizer learning rate")
+    group.add(
+        "-ppo_k_epochs",
+        "--ppo_k_epochs",
+        type=int,
+        default=20,
+        help="[For PPO] Update policy for k epochs in one PPO update")
+    group.add(
+        "-ppo_eps_clip",
+        "--ppo_eps_clip",
+        type=float,
+        default=0.1,
+        help="[For PPO] Clip parameter for PPO [1-eps, 1+eps]"
+    )
+
 
     # Encoder-Decoder Options
     group = parser.add_argument_group('Model- Encoder-Decoder')
@@ -441,6 +589,8 @@ def _add_train_general_opts(parser):
               help="list of ranks of each process.")
     group.add('--world_size', '-world_size', default=1, type=int,
               help="total number of distributed processes.")
+    group.add('--device_id', '-device_id', default=0, type=int,
+              help='In case of 1 GPU, specify the device ID')
     group.add('--gpu_backend', '-gpu_backend',
               default="nccl", type=str,
               help="Type of torch distributed backend")
@@ -539,7 +689,7 @@ def _add_train_general_opts(parser):
               nargs="*", default=None,
               help='Criteria to use for early stopping.')
     group.add('--optim', '-optim', default='sgd',
-              choices=['sgd', 'adagrad', 'adadelta', 'adam',
+              choices=['sgd', 'adagrad', 'adadelta', 'adam', 'sharedadam',
                        'sparseadam', 'adafactor', 'fusedadam'],
               help="Optimization method.")
     group.add('--adagrad_accumulator_init', '-adagrad_accumulator_init',

@@ -1,0 +1,101 @@
+# opensubtitles_v2016_de_en.yaml
+save_data: data/OpenSubtitles-v2016
+
+## Where the vocab(s) will be written
+src_vocab: data/OpenSubtitles-v2016/de-en-v2016-lower.vocab.src
+tgt_vocab: data/OpenSubtitles-v2016/de-en-v2016-lower.vocab.tgt
+# Prevent overwriting existing files in the folder
+overwrite: False
+
+# Corpus opts:
+data:
+    opensubtitles:
+        path_src: data/OpenSubtitles-v2016/de-en-v2016-train-src-lower.txt
+        path_tgt: data/OpenSubtitles-v2016/de-en-v2016-train-tgt-lower.txt
+        transforms: []
+#        transforms: [sentencepiece]
+    valid:
+        path_src: data/OpenSubtitles-v2016/de-en-v2016-valid-src-lower.txt
+        path_tgt: data/OpenSubtitles-v2016/de-en-v2016-valid-tgt-lower.txt
+        transforms: []
+#        transforms: [sentencepiece]
+
+
+# # Model training parameters
+
+# General opts
+save_model: data/OpenSubtitles-v2016/joint_training/a3c-bleu-4gpu-lower/model
+train_from: data/OpenSubtitles-v2016/critic_pretraining/a3c-bleu-lower/model_step_100.pt
+reset_optim: "all"
+keep_checkpoint: 50
+save_checkpoint_steps: 100
+average_decay: 0.0005
+seed: 1234
+report_every: 1
+train_steps: 1000
+valid_steps: 1000
+gpu_verbose_level: 2
+
+# Batching
+queue_size: 1024
+bucket_size: 32768
+pool_factor: 8192
+world_size: 3
+gpu_ranks: [0,1,2]
+batch_type: "tokens"
+batch_size: 2000
+valid_batch_size: 2000
+batch_size_multiple: 1
+max_generator_batches: 0
+accum_count: [1]
+accum_steps: [0]
+
+# Optimization
+model_dtype: "fp32"
+optim: "sharedadam"
+learning_rate: 2
+warmup_steps: 0
+decay_method: "none"
+start_decay_steps: 0
+learning_rate_decay: 0.9
+adam_beta2: 0.998
+max_grad_norm: 0
+label_smoothing: 0.1
+param_init: 0
+param_init_glorot: true
+normalization: "tokens"
+actor_learning_rate: 0.000001
+critic_learning_rate: 0.00001
+
+# Model
+model_task: a3c
+train_mode: ac
+policy_strategy: [categorical, categorical, categorical]
+policy_topk_sampling: [100,200,500]
+policy_sampling_temperature: [1.0,1.0,1.0]
+policy_topp_sampling: [-1,-1,-1]
+discount_factor: 0.99
+multi_step: 5
+w_fluency: 1
+w_tlss: 0
+w_slss: 1
+norm_unsuper_reward: true
+lambda_xent: 0.1
+lambda_var: 0.25
+use_target_network: false
+target_network_update_period: 500
+encoder_type: transformer
+decoder_type: transformer
+enc_layers: 6
+dec_layers: 6
+heads: 8
+rnn_size: 512
+word_vec_size: 512
+transformer_ff: 2048
+dropout_steps: [0]
+dropout: [0.1]
+attention_dropout: [0.1]
+position_encoding: true
+
+# Logging
+log_file: logs/a3c-4gpu-lower/joint_training.txt

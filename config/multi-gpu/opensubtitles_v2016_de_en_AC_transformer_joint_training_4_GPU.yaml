@@ -1,0 +1,95 @@
+# opensubtitles_v2016_de_en.yaml
+save_data: data/OpenSubtitles-v2016
+
+## Where the vocab(s) will be written
+src_vocab: data/OpenSubtitles-v2016/de-en-v2016.vocab.src
+tgt_vocab: data/OpenSubtitles-v2016/de-en-v2016.vocab.tgt
+# Prevent overwriting existing files in the folder
+overwrite: False
+
+# Corpus opts:
+data:
+    opensubtitles:
+        path_src: data/OpenSubtitles-v2016/de-en-v2016-train-src.txt
+        path_tgt: data/OpenSubtitles-v2016/de-en-v2016-train-tgt.txt
+        transforms: []
+#        transforms: [sentencepiece]
+    valid:
+        path_src: data/OpenSubtitles-v2016/de-en-v2016-valid-src.txt
+        path_tgt: data/OpenSubtitles-v2016/de-en-v2016-valid-tgt.txt
+        transforms: []
+#        transforms: [sentencepiece]
+
+
+# # Model training parameters
+
+# General opts
+save_model: data/OpenSubtitles-v2016/joint_training/ac-2gpu-new/model
+train_from: data/OpenSubtitles-v2016/critic_pretraining/ac-2gpu-new/model_step_200000.pt
+keep_checkpoint: 50
+save_checkpoint_steps: 100000
+average_decay: 0.0005
+seed: 1234
+report_every: 1
+train_steps: 300000
+valid_steps: 100000
+
+# Batching
+queue_size: 1024
+bucket_size: 32768
+pool_factor: 8192
+world_size: 3
+gpu_ranks: [0,1,2]
+batch_type: "tokens"
+batch_size: 4096
+valid_batch_size: 4096
+batch_size_multiple: 1
+max_generator_batches: 0
+accum_count: [3]
+accum_steps: [0]
+
+# Optimization
+model_dtype: "fp32"
+optim: "sharedadam"
+learning_rate: 2
+warmup_steps: 1
+decay_method: "noam"
+start_decay_steps: 0
+adam_beta2: 0.998
+max_grad_norm: 0
+label_smoothing: 0.1
+param_init: 0
+param_init_glorot: true
+normalization: "tokens"
+
+# Model
+model_task: ac
+train_mode: ac
+policy_strategy: [categorical, categorical, categorical]
+policy_topk_sampling: [-1,-1,-1]
+policy_sampling_temperature: [1.0,0.9,0.7]
+policy_topp_sampling: [1.0,0.7,0.5]
+discount_factor: 0.5
+multi_step: 5
+w_fluency: 1
+w_tlss: 0
+w_slss: 1
+norm_unsuper_reward: true
+lambda_var: 0.25
+use_target_network: true
+target_network_update_period: 500
+encoder_type: transformer
+decoder_type: transformer
+enc_layers: 6
+dec_layers: 6
+heads: 8
+rnn_size: 512
+word_vec_size: 512
+transformer_ff: 2048
+dropout_steps: [0]
+dropout: [0.1]
+attention_dropout: [0.1]
+position_encoding: true
+
+# Logging
+log_file: logs/ac/joint_training.txt

@@ -11,7 +11,7 @@ from onmt.modules.embeddings import prepare_pretrained_embeddings
 from onmt.utils.logging import init_logger, logger
 
 from onmt.models.model_saver import load_checkpoint
-from onmt.train_single import main as single_main, _build_train_iter
+from onmt.train_single import main as single_main, async_main, _get_model_opts, _build_train_iter
 
 from onmt.utils.parse import ArgumentParser
 from onmt.opts import train_opts
@@ -20,6 +20,10 @@ from onmt.inputters.fields import build_dynamic_fields, save_fields, \
     load_fields
 from onmt.transforms import make_transforms, save_transforms, \
     get_specials, get_transforms_cls
+from onmt.model_builder import build_model
+from onmt.utils.optimizers import Optimizer
+from onmt.constants import ModelTask, TrainMode
+from onmt.modules.rewards import UnsuperReward
 
 # Set sharing strategy manually instead of default based on the OS.
 torch.multiprocessing.set_sharing_strategy('file_system')
@@ -104,39 +108,139 @@ def train(opt):
     set_random_seed(opt.seed, False)
 
     checkpoint, fields, transforms_cls = _init_train(opt)
-    train_process = partial(
-        single_main,
-        fields=fields,
-        transforms_cls=transforms_cls,
-        checkpoint=checkpoint)
+
+    if checkpoint is not None and opt.async and opt.model_task == ModelTask.AC:
+        model_params = checkpoint['model']
+        gen_params = checkpoint['generator']
+
+        checkpoint = None
+        opt.train_from = ''
+
+    if checkpoint is not None and opt.model_task == ModelTask.A3C:
+        model_params = checkpoint['model']
+        gen_params = checkpoint['generator']
+
+        checkpoint = None
+        opt.train_from = ''
+
+    if opt.async or opt.model_task == ModelTask.A3C and opt.train_mode in [TrainMode.CRITIC, TrainMode.AC]:
+
+        print('Performing Async Training')
+
+        model_opt = _get_model_opts(opt, checkpoint=checkpoint)
+
+        # if len(opt.gpu_ranks) > 2:
+        global_gpu_id = opt.gpu_ranks[-1] + 1
+
+        print('Building the global model')
+        # Build a global model.
+        # global_model = build_model(opt, opt, fields, checkpoint, gpu_id=global_gpu_id)
+        global_model = build_model(model_opt, opt, fields, checkpoint, gpu_id=global_gpu_id)
+
+        if opt.async and opt.model_task == ModelTask.AC:
+            global_model.load_state_dict(model_params, strict=False)
+            global_model.generator.load_state_dict(gen_params, strict=False)
+
+        if opt.model_task == ModelTask.A3C:
+            global_model.load_state_dict(model_params, strict=False)
+            global_model.generator.load_state_dict(gen_params, strict=False)
+
+        global_model.share_memory()
+
+        # Build optimizer.
+        if opt.train_from and checkpoint is not None:
+            actor_optim = Optimizer.from_opt(global_model.actor, opt, checkpoint=checkpoint, ac_optim_opt='actor')
+            critic_optim = Optimizer.from_opt(global_model.critic, opt, checkpoint=checkpoint, ac_optim_opt='critic')
+            optim = (actor_optim, critic_optim)
+        else:
+            actor_optim = Optimizer.from_opt(global_model.actor, opt, checkpoint=checkpoint, ac_optim_opt='actor')
+            critic_optim = Optimizer.from_opt(global_model.critic, opt, checkpoint=checkpoint, ac_optim_opt='critic')
+            optim = (actor_optim, critic_optim)
+
+        # if opt.model_task == ModelTask.AC:
+        #     actor_optim = Optimizer.from_opt(global_model.actor, opt, checkpoint=None, ac_optim_opt='actor')
+        #     critic_optim = Optimizer.from_opt(global_model.critic, opt, checkpoint=None, ac_optim_opt='critic')
+        #     optim = (actor_optim, critic_optim)
+
+        # unsuper_reward = UnsuperReward(fields, opt.w_fluency, opt.w_tlss, opt.w_slss, global_gpu_id, opt.norm_unsuper_reward)
+        # unsuper_reward = None
+
+        train_process = partial(
+            async_main,
+            global_model=global_model,
+            optim=optim,
+            # global_gpu_id=global_gpu_id,
+            # unsuper_reward=unsuper_reward,
+            model_opt=opt,
+            fields=fields,
+            transforms_cls=transforms_cls,
+            checkpoint=checkpoint)
+    else:
+        print('Performing Sync Training')
+
+        train_process = partial(
+            single_main,
+            fields=fields,
+            transforms_cls=transforms_cls,
+            checkpoint=checkpoint)
 
     nb_gpu = len(opt.gpu_ranks)
+
+    print('Number of gpus: {}'.format(nb_gpu))
+    print('GPU RANKS: {}'.format(opt.gpu_ranks))
 
     if opt.world_size > 1:
 
         queues = []
         mp = torch.multiprocessing.get_context('spawn')
+
+        print('Creating semaphore')
+
+        print('World size: {}'.format(opt.world_size))
+
         semaphore = mp.Semaphore(opt.world_size * opt.queue_size)
         # Create a thread to listen for errors in the child processes.
         error_queue = mp.SimpleQueue()
         error_handler = ErrorHandler(error_queue)
         # Train with multiprocessing.
         procs = []
+
+        print('Creating consumers')
+
         for device_id in range(nb_gpu):
+
+            print('Constructing mp queue')
+
             q = mp.Queue(opt.queue_size)
             queues += [q]
+
+            print('Deploying consumer')
+
             procs.append(mp.Process(target=consumer, args=(
                 train_process, opt, device_id, error_queue, q, semaphore),
                 daemon=True))
+
+            print('procs: {}'.format(procs))
+
+            print('Starting consumer')
+
             procs[device_id].start()
             logger.info(" Starting process pid: %d  " % procs[device_id].pid)
             error_handler.add_child(procs[device_id].pid)
         producers = []
+
+        print('Creating producers')
         # This does not work if we merge with the first loop, not sure why
         for device_id in range(nb_gpu):
             # Get the iterator to generate from
+
+            print('Building train iter')
+
             train_iter = _build_train_iter(
                 opt, fields, transforms_cls, stride=nb_gpu, offset=device_id)
+
+            print('Deploying producer')
+
             producer = mp.Process(target=batch_producer,
                                   args=(train_iter, queues[device_id],
                                         semaphore, opt, device_id),
@@ -154,7 +258,7 @@ def train(opt):
             p.terminate()
 
     elif nb_gpu == 1:  # case 1 GPU only
-        train_process(opt, device_id=0)
+        train_process(opt, device_id=opt.device_id)
     else:   # case only CPU
         train_process(opt, device_id=-1)
 

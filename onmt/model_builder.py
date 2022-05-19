@@ -5,6 +5,7 @@ and creates each encoder and decoder accordingly.
 import re
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.nn.init import xavier_uniform_
 
 import onmt.modules
@@ -116,11 +117,17 @@ def build_src_emb(model_opt, fields):
     return src_emb
 
 
-def build_encoder_with_embeddings(model_opt, fields):
+def build_encoder_with_embeddings(model_opt, fields, for_critic=False):
     # Build encoder.
-    src_emb = build_src_emb(model_opt, fields)
-    encoder = build_encoder(model_opt, src_emb)
-    return encoder, src_emb
+    if for_critic:
+        tgt_field = fields["tgt"]
+        tgt_emb = build_embeddings(model_opt, tgt_field, for_encoder=False)
+        encoder = build_encoder(model_opt, tgt_emb)
+        return encoder, tgt_emb
+    else:
+        src_emb = build_src_emb(model_opt, fields)
+        encoder = build_encoder(model_opt, src_emb)
+        return encoder, src_emb
 
 
 def build_decoder_with_embeddings(
@@ -161,6 +168,90 @@ def build_task_specific_model(model_opt, fields):
             model_opt, fields, share_embeddings=True, src_emb=src_emb
         )
         return onmt.models.LanguageModel(decoder=decoder)
+    elif model_opt.model_task == ModelTask.AC:
+        logger.info('Building the AC NMT model...')
+        actor_encoder, src_emb = build_encoder_with_embeddings(model_opt, fields)
+        actor_decoder, _ = build_decoder_with_embeddings(
+            model_opt,
+            fields,
+            share_embeddings=model_opt.share_embeddings,
+            src_emb=src_emb,
+        )
+
+        actor = onmt.models.Actor(actor_encoder, actor_decoder)
+
+        critic_encoder, tgt_emb = build_encoder_with_embeddings(model_opt, fields, for_critic=True)
+        critic_decoder, _ = build_decoder_with_embeddings(
+            model_opt,
+            fields,
+            share_embeddings=model_opt.share_embeddings,
+            src_emb=tgt_emb,
+        )
+        critic_output_layer = nn.Sequential(
+        nn.Linear(model_opt.dec_rnn_size,
+                  len(fields["tgt"].base_field.vocab)),
+                  Cast(torch.float32))
+
+        critic = onmt.models.CriticQ(critic_encoder, critic_decoder, critic_output_layer)
+
+        return onmt.models.ACNMTModel(actor=actor, critic=critic,
+                                      train_mode=model_opt.train_mode, tgt_field=fields["tgt"])
+    elif model_opt.model_task in [ModelTask.A2C, ModelTask.A3C, ModelTask.PPO]:
+        logger.info('Building the A2C NMT model...')
+        actor_encoder, src_emb = build_encoder_with_embeddings(model_opt, fields)
+        actor_decoder, _ = build_decoder_with_embeddings(
+            model_opt,
+            fields,
+            share_embeddings=model_opt.share_embeddings,
+            src_emb=src_emb,
+        )
+
+        actor = onmt.models.Actor(actor_encoder, actor_decoder)
+
+        critic_encoder, tgt_emb = build_encoder_with_embeddings(model_opt, fields, for_critic=True)
+        critic_decoder, _ = build_decoder_with_embeddings(
+            model_opt,
+            fields,
+            share_embeddings=model_opt.share_embeddings,
+            src_emb=tgt_emb,
+        )
+
+        # TODO change critic output layer for A2C
+        critic_output_layer = nn.Sequential(
+            nn.Linear(model_opt.dec_rnn_size, 1),
+            Cast(torch.float32))
+
+        critic = onmt.models.CriticV(critic_encoder, critic_decoder, critic_output_layer)
+
+        return onmt.models.A2CNMTModel(actor=actor, critic=critic,
+                                       train_mode=model_opt.train_mode, tgt_field=fields["tgt"])
+    elif model_opt.model_task == ModelTask.ACSE:
+        logger.info('Building the ACSE NMT model...')
+        actor_encoder, src_emb = build_encoder_with_embeddings(model_opt, fields)
+        actor_decoder, _ = build_decoder_with_embeddings(
+            model_opt,
+            fields,
+            share_embeddings=model_opt.share_embeddings,
+            src_emb=src_emb,
+        )
+
+        actor = onmt.models.Actor(actor_encoder, actor_decoder)
+
+        critic_decoder, _ = build_decoder_with_embeddings(
+            model_opt,
+            fields,
+            share_embeddings=model_opt.share_embeddings,
+            src_emb=src_emb,
+        )
+        critic_output_layer = nn.Sequential(
+        nn.Linear(model_opt.dec_rnn_size,
+                  len(fields["tgt"].base_field.vocab)),
+                  Cast(torch.float32))
+
+        critic = onmt.models.CriticQSharedEnc(critic_decoder, critic_output_layer)
+
+        return onmt.models.ACNMTModelSharedEnc(actor=actor, critic=critic,
+                                      train_mode=model_opt.train_mode, tgt_field=fields["tgt"])
     else:
         raise ValueError(f"No model defined for {model_opt.model_task} task")
 
@@ -243,14 +334,18 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
             gen_func = onmt.modules.sparse_activations.LogSparsemax(dim=-1)
         else:
             gen_func = nn.LogSoftmax(dim=-1)
+
+        # TODO think about the Tanh added
         generator = nn.Sequential(
             nn.Linear(model_opt.dec_rnn_size,
                       len(fields["tgt"].base_field.vocab)),
+            # nn.Tanh(),
             Cast(torch.float32),
             gen_func
         )
         if model_opt.share_decoder_embeddings:
             generator[0].weight = model.decoder.embeddings.word_lut.weight
+
     else:
         tgt_base_field = fields["tgt"].base_field
         vocab_size = len(tgt_base_field.vocab)
@@ -281,6 +376,7 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
             model.decoder.embeddings.load_pretrained_vectors(
                 model_opt.pre_word_vecs_dec)
 
+    # TODO: Implement code to support AC checkpoints
     if checkpoint is not None:
         # This preserves backward-compat for models using customed layernorm
         def fix_key(s):
@@ -303,15 +399,18 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
         model.load_state_dict(checkpoint['model'], strict=False)
         generator.load_state_dict(checkpoint['generator'], strict=False)
 
-    model.generator = generator
+    if model_opt.model_task not in [ModelTask.AC, ModelTask.A2C, ModelTask.A3C, ModelTask.PPO, ModelTask.ACSE]:
+        model.generator = generator
+    else:
+        model.actor.generator = generator
     model.to(device)
     if model_opt.model_dtype == 'fp16' and model_opt.optim == 'fusedadam':
         model.half()
     return model
 
 
-def build_model(model_opt, opt, fields, checkpoint):
+def build_model(model_opt, opt, fields, checkpoint, gpu_id=None):
     logger.info('Building model...')
-    model = build_base_model(model_opt, fields, use_gpu(opt), checkpoint)
+    model = build_base_model(model_opt, fields, use_gpu(opt), checkpoint, gpu_id=gpu_id)
     logger.info(model)
     return model

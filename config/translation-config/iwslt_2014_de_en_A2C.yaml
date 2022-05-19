@@ -1,0 +1,5 @@
+model: data/OpenSubtitles-v2016/joint_training/a2c-alt/model_step_145600.pt
+src: data/iwslt2014-test/iwslt14-test-src-processed.txt
+output: data/iwslt2014-test/translation/A2C_145600.txt
+beam_size: 10
+ban_unk_token: true
