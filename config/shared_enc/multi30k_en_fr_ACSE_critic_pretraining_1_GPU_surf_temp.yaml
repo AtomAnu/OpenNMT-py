@@ -67,9 +67,9 @@ normalization: "tokens"
 model_task: acse
 train_mode: critic
 policy_strategy: [categorical, categorical, categorical]
-policy_topk_sampling: [-1,-1,-1]
-policy_sampling_temperature: [1.0,1.0,1.0]
-policy_topp_sampling: [0.9,0.7,0.5]
+policy_topk_sampling: [500,500,500]
+policy_sampling_temperature: [0.9,1.0,1.0]
+policy_topp_sampling: [1.0,1.0,1.0]
 discount_factor: 0.99
 multi_step: 5
 unsuper_reward: true
