@@ -24,7 +24,7 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/multi30k-models/critic_pretraining/acq-1gpu-multi30k-surf_topp/model
+save_model: data/multi30k-models/critic_pretraining/acq-1gpu-multi30k-surf_topk/model
 train_from: data/multi30k-models/actor_pretraining/acse-1gpu-multi30k/model_step_10000.pt
 reset_optim: "all"
 keep_checkpoint: 50

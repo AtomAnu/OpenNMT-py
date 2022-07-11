@@ -24,8 +24,8 @@ data:
 # # Model training parameters
 
 # General opts
-save_model: data/multi30k-models/critic_pretraining/acq-1gpu-multi30k-surf_temp/model
-train_from: data/multi30k-models/actor_pretraining/acse-1gpu-multi30k/model_step_10000.pt
+save_model: data/multi30k-models/joint_training/acq-1gpu-multi30k-surf_topk/model
+train_from: data/multi30k-models/critic_pretraining/acq-1gpu-multi30k-surf_topp/model_step_800.pt
 reset_optim: "all"
 keep_checkpoint: 50
 save_checkpoint_steps: 50
@@ -65,10 +65,10 @@ normalization: "tokens"
 
 # Model
 model_task: acse
-train_mode: critic
+train_mode: ac
 policy_strategy: [categorical, categorical, categorical]
 policy_topk_sampling: [500,500,500]
-policy_sampling_temperature: [0.9,1.0,1.0]
+policy_sampling_temperature: [1.0,1.0,1.0]
 policy_topp_sampling: [1.0,1.0,1.0]
 discount_factor: 0.99
 multi_step: 5
