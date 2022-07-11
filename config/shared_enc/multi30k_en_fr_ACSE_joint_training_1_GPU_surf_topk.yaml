@@ -67,7 +67,7 @@ normalization: "tokens"
 model_task: acse
 train_mode: ac
 policy_strategy: [categorical, categorical, categorical]
-policy_topk_sampling: [500,500,500]
+policy_topk_sampling: [1000,500,500]
 policy_sampling_temperature: [1.0,1.0,1.0]
 policy_topp_sampling: [1.0,1.0,1.0]
 discount_factor: 0.99
