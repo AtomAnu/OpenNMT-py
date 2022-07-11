@@ -1432,6 +1432,8 @@ class SyncACSETrainer(object):
                 try:
                     loss, _ = loss
 
+                    print('Loss: {}'.format(loss))
+
                     if loss is not None:
                         self.optim.backward(loss)
 
