@@ -838,7 +838,9 @@ class ACSELossCompute(LossComputeBase):
 
             actor_loss = policy_loss + self.lambda_xent * xent_loss
 
-            loss = actor_loss + critic_loss
+            # TODO revert to original loss (commented loss)
+            # loss = actor_loss + critic_loss
+            loss = actor_loss
 
             stats = self._stats(loss.clone(), scores, gtruth)
 
