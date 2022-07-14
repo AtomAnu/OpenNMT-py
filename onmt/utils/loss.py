@@ -840,7 +840,7 @@ class ACSELossCompute(LossComputeBase):
 
             # TODO revert to original loss (commented loss)
             # loss = actor_loss + critic_loss
-            loss = actor_loss
+            loss = critic_loss
 
             stats = self._stats(loss.clone(), scores, gtruth)
 
