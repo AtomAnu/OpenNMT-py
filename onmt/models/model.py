@@ -286,6 +286,10 @@ class Actor(nn.Module):
                 logits = self.sample_topp(logits, keep_topp)
             if keep_topk > 0:
                 logits = self.sample_topk(logits, keep_topk)
+
+            print('logits min: {}'.format(torch.min(logits)))
+            print('logits max: {}'.format(torch.max(logits)))
+
             dist = torch.distributions.Multinomial(
                 logits=logits, total_count=1)
             topk_ids = torch.argmax(dist.sample(), dim=1, keepdim=True)
