@@ -287,7 +287,10 @@ class Actor(nn.Module):
             if keep_topk > 0:
                 logits = self.sample_topk(logits, keep_topk)
 
-            logits = F.sigmoid(logits)
+            print(logits.shape)
+
+            # logits = F.sigmoid(logits)
+            logits = logits - torch.max(logits, axis=1).values.unsqueeze(1)
 
             print('logits min: {}'.format(torch.min(logits)))
             print('logits max: {}'.format(torch.max(logits)))
