@@ -30,7 +30,7 @@ reset_optim: "all"
 keep_checkpoint: 50
 save_checkpoint_steps: 50
 average_decay: 0.0005
-seed: 12345
+seed: 1234
 report_every: 1
 train_steps: 10000
 valid_steps: 10000
